@@ -418,10 +418,14 @@ PetscErrorCode SSAFD::assemble_matrix(bool include_basal_shear, Mat A) {
   Mask M;
 
   const bool bedrock_boundary = config.get_flag("ssa_dirichlet_bc");
-
   if (vel_bc && bc_locations) {
     ierr = bc_locations->begin_access(); CHKERRQ(ierr);
   }
+  
+  const bool sub_gl = config.get_flag("sub_groundingline");
+  if (sub_gl){
+    ierr = gl_mask->begin_access(); CHKERRQ(ierr);
+   }
 
   // handles friction of the ice cell along ice-free bedrock margins when bedrock higher than ice surface (in simplified setups)
   bool nuBedrockSet=config.get_flag("nuBedrockSet");
@@ -620,6 +624,12 @@ PetscErrorCode SSAFD::assemble_matrix(bool include_basal_shear, Mat A) {
           // areas already have a strength extension
           beta = beta_ice_free_bedrock;
         }
+        if (sub_gl){
+          // if grounding line interpolation apply here reduced basal drag
+          if (M.icy(M_ij)) {
+            beta = (*gl_mask)(i,j) * basal.drag((*tauc)(i,j), vel(i,j).u, vel(i,j).v);
+          }
+        }
       }
 
       // add beta to diagonal entries
@@ -645,6 +655,10 @@ PetscErrorCode SSAFD::assemble_matrix(bool include_basal_shear, Mat A) {
   if (vel_bc && bc_locations) {
     ierr = bc_locations->end_access(); CHKERRQ(ierr);
   }
+  
+  if (sub_gl){
+    ierr = gl_mask->end_access(); CHKERRQ(ierr);
+   }
 
   ierr = mask->end_access(); CHKERRQ(ierr);
   ierr = vel.end_access(); CHKERRQ(ierr);
@@ -1107,6 +1121,37 @@ PetscErrorCode SSAFD::compute_nuH_staggered(IceModelVec2Stag &result, PetscReal 
   ierr = velocity.get_array(uv); CHKERRQ(ierr);
   ierr = hardness.begin_access(); CHKERRQ(ierr);
   ierr = thickness->begin_access(); CHKERRQ(ierr);
+
+  /* 
+  /////////////////////////////////////////////////////////////////////
+
+  IceModelVec2S &fd = *fracdens; // to improve readability (below)
+  bool dofd = (config.get_flag("do_fracture_density") && config.get_flag("use_ssa_velocity"));
+  if (dofd) 
+    ierr = fd.begin_access(); CHKERRQ(ierr);
+  
+  //get options
+  PetscInt    Nparam=3;
+  PetscReal   inarray[3] = {0.0,0.0,1.0};//phi_init, soft_rate, soft_offset
+
+  PetscBool sd_set;
+  ierr = PetscOptionsGetRealArray(PETSC_NULL, "-fracture_softening", inarray, &Nparam, &sd_set);
+  CHKERRQ(ierr);
+
+  PetscReal phi_init= inarray[0], soft_rate = inarray[1], soft_offset = inarray[2];
+
+  if (sd_set) {
+    if ((Nparam > 3) || (Nparam < 3)) {
+      ierr = verbPrintf(1, grid.com,
+	"PISM ERROR: option -fracture_softening provided with more or fewer than 3\n"
+        "            arguments ... ENDING ...\n");CHKERRQ(ierr);
+      PISMEnd();
+    }
+    //ierr = verbPrintf(2, grid.com,"PISM-PIK INFO: fracture_softening mode is set with phi_min=%.2f, ms=%.2f and ns=%.2f\n", phi_init,soft_rate,soft_offset); CHKERRQ(ierr);
+  }
+				
+  /////////////////////////////////////////////////////////  
+  */
 
   PetscScalar ssa_enhancement_factor = flow_law->enhancement_factor(),
     n_glen = flow_law->exponent(),

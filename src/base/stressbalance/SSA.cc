@@ -39,6 +39,12 @@ SSA::SSA(IceGrid &g, IceBasalResistancePlasticLaw &b,
   driving_stress_x = NULL;
   driving_stress_y = NULL;
 
+  //if (config.get_flag("do_fracture_density") && config.get_flag("use_ssa_velocity")) {
+  //  fracdens = NULL;
+  //}
+  if (config.get_flag("sub_groundingline")) {
+    gl_mask = NULL;
+  }
   strength_extension = new SSAStrengthExtension(config);
   allocate();
 }
@@ -54,6 +60,11 @@ PetscErrorCode SSA::init(PISMVars &vars) {
 
   mask = dynamic_cast<IceModelVec2Int*>(vars.get("mask"));
   if (mask == NULL) SETERRQ(grid.com, 1, "mask is not available");
+
+  if (config.get_flag("sub_groundingline")) {
+    gl_mask = dynamic_cast<IceModelVec2S*>(vars.get("gl_mask"));
+    if (gl_mask == NULL) SETERRQ(grid.com, 1, "subgrid_grounding_line_position is not available");
+  }
 
   thickness = dynamic_cast<IceModelVec2S*>(vars.get("land_ice_thickness"));
   if (thickness == NULL) SETERRQ(grid.com, 1, "land_ice_thickness is not available");

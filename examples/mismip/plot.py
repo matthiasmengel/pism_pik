@@ -2,7 +2,7 @@
 
 import MISMIP
 
-from pylab import figure, subplot, hold, plot, xlabel, ylabel, title, axis, vlines, savefig, text
+from pylab import figure, subplot, hold, plot, xlabel, ylabel, title, axis, vlines, savefig, text, clf
 from sys import exit
 
 import numpy as np
@@ -164,8 +164,9 @@ def plot_profile(in_file, out_file):
 
     # convert x to kilometers
     x /= 1e3
-
+    #clf
     figure(1)
+    clf
     ax = subplot(111)
     hold(True)
     plot(x, np.zeros_like(x), ls='dotted', color='red')
@@ -200,8 +201,9 @@ def plot_flux(in_file, out_file):
     # plot positive xs only
     cflx = cflx[x >= 0]
     x    = x[x >= 0]
-
+    #clf
     figure(2)
+    clf
     hold(True)
 
     plot(x/1e3, cflx, 'k.-', markersize=10, linewidth=2)
@@ -213,6 +215,8 @@ def plot_flux(in_file, out_file):
 
     print "Saving '%s'...\n" % out_file
     savefig(out_file, dpi=300, facecolor='w', edgecolor='w')
+
+    hold(False)
 
 if __name__ == "__main__":
     args, out_file, opts = process_options()

@@ -73,6 +73,10 @@ netcdf pism_config {
     pism_config:do_thickness_calving = "false";
     pism_config:do_thickness_calving_doc = "ad hoc calving at certain threshold for terminal ice thickness";
 
+    pism_config:sub_groundingline  = "false";
+    pism_config:sub_groundingline_doc = "The Pattyn et al. interpolation scheme expanded to two dimensions is used if switched on in order to evaluate the position of the grounding line on a subgrid scale.";
+
+
     pism_config:bed_deformation_model = "none";
     pism_config:bed_deformation_model_doc = "Selects a bed deformation model to use; possible choices are 'none', 'iso' (point-wise isostasy), 'lc' (see [\\ref LingleClark], requires FFTW3).";
 

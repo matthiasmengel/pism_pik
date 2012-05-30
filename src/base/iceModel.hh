@@ -241,6 +241,7 @@ protected:
     vIcebergMask, //!< mask for iceberg identification
 
     vBCMask; //!< mask to determine Dirichlet boundary locations
+  IceModelVec2S gl_mask; //!< mask to determine grounding line position
  
   IceModelVec2V vBCvel; //!< Dirichlet boundary velocities
 
@@ -354,6 +355,7 @@ protected:
                            planeStar<PetscScalar> &SSA_velocity,
                            planeStar<PetscScalar> &SIA_flux);
   virtual PetscErrorCode massContExplicitStep();
+  virtual PetscErrorCode sub_gl_position();
 
   // see iMhydrology.cc
   virtual PetscErrorCode diffuse_bwat();

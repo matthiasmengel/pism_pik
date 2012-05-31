@@ -866,8 +866,8 @@ PetscErrorCode IceModel::sub_gl_position() {
         gl_mask_x=1.0;
         gl_mask_y=1.0;
       }
-      
-      if (mask.grounded(i, j) && mask.floating_ice(i+1, j)) {
+      //if (mask.grounded(i, j) && mask.floating_ice(i+1, j)) {
+      if (mask.grounded(i, j) && (mask.floating_ice(i+1, j) || mask.ice_free_ocean(i+1, j))) {
         xpart1=vbed(i, j)-sea_level+vH(i, j)*rhoq;
         xpart2=vbed(i+1, j)-sea_level+vH(i+1, j)*rhoq;
         interpol=xpart1/(xpart1-xpart2);
@@ -876,21 +876,24 @@ PetscErrorCode IceModel::sub_gl_position() {
         else
           gl_mask_new(i+1,j)+=(interpol-0.5);
         
-        //ierr = verbPrintf(2, grid.com,"!!! PISM_INFO: h1=%f, h2=%f, interpol=%f at i=%d, j=%d\n",xpart1,xpart2,interpol,i,j); CHKERRQ(ierr);
+        ierr = verbPrintf(2, grid.com,"!!! PISM_INFO: h1=%f, h2=%f, interpol=%f at i=%d, j=%d\n",xpart1,xpart2,interpol,i,j); CHKERRQ(ierr);
       }
-      if (mask.grounded(i, j) && mask.floating_ice(i-1, j)){
+      //if (mask.grounded(i, j) && mask.floating_ice(i-1, j)){
+      if (mask.grounded(i, j) && (mask.floating_ice(i-1, j) || mask.ice_free_ocean(i-1, j))){
         xpart1=vbed(i, j)-sea_level+vH(i, j)*rhoq;
         xpart2=vbed(i-1, j)-sea_level+vH(i-1, j)*rhoq;
         interpol=xpart1/(xpart1-xpart2);
         if (interpol<0.5)
           gl_mask_x+=(interpol-0.5);
-        else
-          gl_mask_new(i-1,j)+=(interpol-0.5);
-          
+        else{
+          //if (vH(i-1, j)>0.0)
+            gl_mask_new(i-1,j)+=(interpol-0.5);
+        }  
         //if (j==1){
-        //ierr = verbPrintf(2, grid.com,"!!! PISM_INFO: h1=%f, h2=%f, interpol=%f at i=%d, j=%d\n",xpart1,xpart2,interpol,i,j); CHKERRQ(ierr);
+        ierr = verbPrintf(2, grid.com,"!!! PISM_INFO: h1=%f, h2=%f, interpol=%f at i=%d, j=%d\n",xpart1,xpart2,interpol,i,j); CHKERRQ(ierr);
       }     
-      if (mask.grounded(i, j) && mask.floating_ice(i, j+1)){
+      //if (mask.grounded(i, j) && mask.floating_ice(i, j+1)){
+      if (mask.grounded(i, j) && (mask.floating_ice(i, j+1) || mask.ice_free_ocean(i, j+1))){
         xpart1=vbed(i, j)-sea_level+vH(i, j)*rhoq;
         xpart2=vbed(i, j+1)-sea_level+vH(i, j+1)*rhoq;
         interpol=xpart1/(xpart1-xpart2);
@@ -899,9 +902,10 @@ PetscErrorCode IceModel::sub_gl_position() {
         else
           gl_mask_new(i,j+1)+=(interpol-0.5);
           
-        //ierr = verbPrintf(2, grid.com,"!!! PISM_INFO: h1=%f, h2=%f, interpol=%f at i=%d, j=%d\n",xpart1,xpart2,interpol,i,j); CHKERRQ(ierr);
+        ierr = verbPrintf(2, grid.com,"!!! PISM_INFO: h1=%f, h2=%f, interpol=%f at i=%d, j=%d\n",xpart1,xpart2,interpol,i,j); CHKERRQ(ierr);
       }
-      if (mask.grounded(i, j) && mask.floating_ice(i, j-1)){
+      //if (mask.grounded(i, j) && mask.floating_ice(i, j-1)){
+      if (mask.grounded(i, j) && (mask.floating_ice(i, j-1) || mask.ice_free_ocean(i, j-1))){
         xpart1=vbed(i, j)-sea_level+vH(i, j)*rhoq;
         xpart2=vbed(i, j-1)-sea_level+vH(i, j-1)*rhoq;
         interpol=xpart1/(xpart1-xpart2);
@@ -910,7 +914,7 @@ PetscErrorCode IceModel::sub_gl_position() {
         else
           gl_mask_new(i,j-1)+=(interpol-0.5);
           
-        //ierr = verbPrintf(2, grid.com,"!!! PISM_INFO: h1=%f, h2=%f, interpol=%f at i=%d, j=%d\n",xpart1,xpart2,interpol,i,j); CHKERRQ(ierr); 
+        ierr = verbPrintf(2, grid.com,"!!! PISM_INFO: h1=%f, h2=%f, interpol=%f at i=%d, j=%d\n",xpart1,xpart2,interpol,i,j); CHKERRQ(ierr); 
       }
       if (mask.grounded(i, j))
         gl_mask_new(i,j) = gl_mask_x * gl_mask_y;

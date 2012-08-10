@@ -518,6 +518,11 @@ PetscErrorCode IceModel::massContExplicitStep() {
   if (ocean != NULL) {
     ierr = ocean->shelf_base_mass_flux(shelfbmassflux); CHKERRQ(ierr);
   } else { SETERRQ(grid.com, 2, "PISM ERROR: ocean == NULL"); }
+  
+  const bool sub_gl = config.get_flag("sub_groundingline");
+  if (sub_gl){
+    ierr = gl_mask.begin_access(); CHKERRQ(ierr);
+   }
 
   IceModelVec2S vHnew = vWork2d[0];
   ierr = vH.copy_to(vHnew); CHKERRQ(ierr);
@@ -637,7 +642,7 @@ PetscErrorCode IceModel::massContExplicitStep() {
                                                       vMask.int_star(i, j),
                                                       vH.star(i, j)),
             coverage_ratio = vHref(i, j) / H_average;
-
+        
           if (coverage_ratio >= 1.0) {
             // A partially filled grid cell is now considered to be full.
             if (do_redist)
@@ -768,6 +773,10 @@ PetscErrorCode IceModel::massContExplicitStep() {
   if (do_ocean_kill) {
     ierr = ocean_kill_mask.end_access(); CHKERRQ(ierr);
   }
+  
+  if (sub_gl){
+    ierr = gl_mask.end_access(); CHKERRQ(ierr);
+   }
 
   // flux accounting
   {

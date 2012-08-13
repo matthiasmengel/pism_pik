@@ -667,6 +667,7 @@ PetscErrorCode set_config_from_options(MPI_Comm /*com*/, NCConfigVariable &confi
   //ierr = config.flag_from_option("constant_thickness", "do_constant_thickness"); CHKERRQ(ierr);
   
   ierr = config.flag_from_option("subgl", "sub_groundingline"); CHKERRQ(ierr);
+  ierr = config.keyword_from_option("subgl_type", "subgl_type","LI,PA"); CHKERRQ(ierr);
 
   // Calving
 

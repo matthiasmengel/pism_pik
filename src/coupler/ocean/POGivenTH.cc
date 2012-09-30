@@ -28,28 +28,28 @@ PetscErrorCode POGivenTH::init(PISMVars &vars) {
                     "reading ocean temperature and salinity from a file...\n"); CHKERRQ(ierr);
 
   ierr = process_options(); CHKERRQ(ierr);
-  
+
   ierr = set_vec_parameters("", ""); CHKERRQ(ierr);
 
   ierr = temp.create(grid, temp_name, false); CHKERRQ(ierr);
   ierr = mass_flux.create(grid, mass_flux_name, false); CHKERRQ(ierr); //NOTE: salinity instead of mass_flux
-                    
+
   ierr = salinity_boundlayer.create(grid, "salt_bl", false); CHKERRQ(ierr);
   ierr = temp_boundlayer.create(grid, "temp_bl", false); CHKERRQ(ierr);
-  
+
   ierr = temp.set_attrs("climate_forcing",
                         "absolute temperature at ice shelf base",
-                        "Kelvin", "temp_boundlayer"); CHKERRQ(ierr);                      
+                        "Kelvin", "temp_boundlayer"); CHKERRQ(ierr);
   ierr = mass_flux.set_attrs("climate_forcing",
                        "ocean salinity at ice shelf",
-                       "psu", "salinity_boundlayer"); CHKERRQ(ierr); //FIXME unit from PSU to g/kg
-  
+                       "g/kg", "salinity_boundlayer"); CHKERRQ(ierr);
+
   ierr = temp.init(filename); CHKERRQ(ierr);
   ierr = mass_flux.init(filename); CHKERRQ(ierr);
-  
+
   ice_thickness = dynamic_cast<IceModelVec2S*>(vars.get("land_ice_thickness")); //NOTE: Is getting the ice thickness
   if (!ice_thickness) {SETERRQ(grid.com, 1, "ERROR: ice thickness is not available");} //that way ok?
-                                
+
   // read time-independent data right away:
   if (temp.get_n_records() == 1 && mass_flux.get_n_records() == 1) {
     ierr = update(grid.time->current(), 0); CHKERRQ(ierr); // dt is irrelevant
@@ -63,10 +63,10 @@ PetscErrorCode POGivenTH::update(PetscReal my_t, PetscReal my_dt) {
 
   ierr = mass_flux.at_time(t); CHKERRQ(ierr);
   ierr = temp.at_time(t); CHKERRQ(ierr);
-  
+
 //  ierr = mass_flux.average(t, dt); CHKERRQ(ierr);
 //  ierr = temp.average(t, dt); CHKERRQ(ierr);
-  
+
 //  if (enable_time_averaging) {
 //    ierr = mass_flux.average(t, dt); CHKERRQ(ierr);
 //    ierr = temp.average(t, dt); CHKERRQ(ierr);
@@ -78,7 +78,7 @@ PetscErrorCode POGivenTH::update(PetscReal my_t, PetscReal my_dt) {
   return 0;
 }
 
-//NOTE Ported from Matthias 
+//NOTE Ported from Matthias
 //NOTE is this needed?
 //PetscErrorCode POGivenTH::update(PetscReal t_years, PetscReal dt_years) {
 //  PetscErrorCode ierr = update_internal(t_years, dt_years); CHKERRQ(ierr);
@@ -96,7 +96,7 @@ PetscErrorCode POGivenTH::update(PetscReal my_t, PetscReal my_dt) {
 
 //NOTE Ported from Matthias
 PetscErrorCode POGivenTH::shelf_base_temperature(IceModelVec2S &result) {
-  // PetscErrorCode ierr = temp.copy_to(result); CHKERRQ(ierr);    
+  // PetscErrorCode ierr = temp.copy_to(result); CHKERRQ(ierr);
   PetscErrorCode ierr = calculate_boundlayer_temp_and_salt(); CHKERRQ(ierr);
                  ierr = temp_boundlayer.copy_to(result); CHKERRQ(ierr);
   return 0;
@@ -105,14 +105,14 @@ PetscErrorCode POGivenTH::shelf_base_temperature(IceModelVec2S &result) {
 //NOTE Ported from Matthias
 PetscErrorCode POGivenTH::calculate_boundlayer_temp_and_salt() {
 
-  PetscErrorCode ierr;   
+  PetscErrorCode ierr;
 //   ierr = verbPrintf(2, grid.com, "POMeltingParam3eqn::calculate_base_temperature called.\n");
 //          CHKERRQ(ierr);
 
   const PetscScalar rhoi = config.get("ice_density");
   const PetscScalar rhow = config.get("sea_water_density");
   const PetscScalar reference_pressure = 1.01325; // pressure of atmosphere in bar
-  
+
   PetscReal temp_insitu, temp_base, sal_base;
 
   PetscScalar **H;
@@ -121,7 +121,7 @@ PetscErrorCode POGivenTH::calculate_boundlayer_temp_and_salt() {
   ierr = mass_flux.begin_access(); CHKERRQ(ierr); // NOTE salinity instead of mass_flux
   ierr = salinity_boundlayer.begin_access(); CHKERRQ(ierr);
   ierr = temp_boundlayer.begin_access(); CHKERRQ(ierr);
-  
+
   for (PetscInt i=grid.xs; i<grid.xs+grid.xm; ++i) {
     for (PetscInt j=grid.ys; j<grid.ys+grid.ym; ++j) {
       const PetscScalar shelfbaseelev = -(rhoi/rhow) * H[i][j]; // FIXME issue #15
@@ -176,13 +176,13 @@ PetscErrorCode POGivenTH::shelf_base_mass_flux(IceModelVec2S &result) {
 
   for (PetscInt i=grid.xs; i<grid.xs+grid.xm; ++i) {
     for (PetscInt j=grid.ys; j<grid.ys+grid.ym; ++j) {
-    
+
       sal_ocean = mass_flux(i,j); //NOTE salinity instead of mass_flux
       sal_base  = salinity_boundlayer(i,j);
       temp_base = temp_boundlayer(i,j) - 273.15; // to degC
 
       compute_meltrate_3eqn(rhow, rhoi, temp_base, sal_base, sal_ocean, meltrate_3eqn);
-      result(i,j) = -1.0*meltrate_3eqn;    
+      result(i,j) = -1.0*meltrate_3eqn;
 //       ierr = verbPrintf(2, grid.com, "meltrate=%e at i=%d,j=%d\n",
 //                         meltrate_3eqn,i,j); CHKERRQ(ierr);
 
@@ -292,13 +292,13 @@ sal_base  = sf;
 PetscErrorCode POGivenTH::compute_meltrate_3eqn( PetscReal rhow, PetscReal rhoi,
                     PetscReal temp_base, PetscReal sal_base,
                     PetscReal sal_ocean, PetscReal &meltrate){
-  PetscErrorCode ierr;   
+  PetscErrorCode ierr;
 
   // The three-equation model of ice-shelf ocean interaction (Hellmer and Olbers, 1989).
   // Code derived from BRIOS subroutine iceshelf (which goes back to H.Hellmer's 2D ice shelf model code)
   // and adjusted for use in FESOM by Ralph Timmermann, 16.02.2011
   // adapted for PISM by matthias.mengel@pik-potsdam.de
-  
+
   //PetscErrorCode ierr;
   PetscReal rhor, heat_flux, water_flux;
   PetscReal gas, gat;
@@ -343,7 +343,7 @@ PetscErrorCode POGivenTH::compute_meltrate_3eqn( PetscReal rhow, PetscReal rhoi,
 
 //FIXME: Is this class really needed???
 PetscErrorCode POGivenTH::adlprt(PetscReal salz,PetscReal temp_insitu, PetscReal pres, PetscReal &adlprt_out){
-  PetscErrorCode ierr;       
+  PetscErrorCode ierr;
 // Berechnet aus dem Salzgehalt/psu (SALZ), der in-situ Temperatur/degC
 // (TEMP) und dem in-situ Druck/dbar (PRES) den adiabatischen Temperatur-
 // gradienten/(K Dbar^-1) ADLPRT.
@@ -364,13 +364,13 @@ PetscErrorCode POGivenTH::adlprt(PetscReal salz,PetscReal temp_insitu, PetscReal
   adlprt_out = (( ( (e2*temp_insitu + e1)*temp_insitu + e0 )*pres + ( (d1*temp_insitu + d0)*ds
                + ( (c3*temp_insitu + c2)*temp_insitu + c1 )*temp_insitu + c0 ) )*pres
                + (b1*temp_insitu + b0)*ds +  ( (a3*temp_insitu + a2)*temp_insitu + a1 )*temp_insitu + a0);
-  
+
   return 0;
 }
 
 PetscErrorCode POGivenTH::pttmpr(PetscReal salz,PetscReal temp_insitu,PetscReal pres,PetscReal rfpres,
                                           PetscReal& thetao){
-  PetscErrorCode ierr; 
+  PetscErrorCode ierr;
 // Berechnet aus dem Salzgehalt/psu (SALZ), der in-situ Temperatur/degC
 // (TEMP) und dem in-situ Druck/dbar (PRES) die potentielle Temperatur/
 // degC (PTTMPR) bezogen auf den Referenzdruck/dbar (RFPRES). Es wird
@@ -409,12 +409,12 @@ PetscErrorCode POGivenTH::pttmpr(PetscReal salz,PetscReal temp_insitu,PetscReal 
   adlprt(salz,t,p,dd);
   dt = dp*dd;
   thetao = t+ (dt-q-q)/6.0;
-  
+
   return 0;
 }
 
 PetscErrorCode POGivenTH::potit(PetscReal salz,PetscReal thetao,PetscReal pres,PetscReal rfpres, PetscReal &temp_insitu_out){
-  PetscErrorCode ierr;     
+  PetscErrorCode ierr;
   // *********************************************************************
   // Berechnet aus dem Salzgehalt[psu] (SALZ), der pot. Temperatur[oC]
   // (PT) und dem Referenzdruck[dbar] (REFPRES) die in-situ Temperatur
@@ -427,7 +427,7 @@ PetscErrorCode POGivenTH::potit(PetscReal salz,PetscReal thetao,PetscReal pres,P
 
   //tpmd / 0.001 /
   PetscReal tpmd = 0.001, epsi = 0., tin, pt1, ptd;
-  
+
   for (PetscInt iter=0; iter<101; ++iter){
   //do iter=1,100
     tin  = thetao+epsi;
@@ -444,7 +444,7 @@ PetscErrorCode POGivenTH::potit(PetscReal salz,PetscReal thetao,PetscReal pres,P
     }
     if(iter==100){ SETERRQ(grid.com, 1, "in situ temperature calculation not converging."); }
   }
-  
+
   temp_insitu_out = tin;
   return 0;
 }

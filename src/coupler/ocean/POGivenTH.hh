@@ -1,4 +1,4 @@
-// Copyright (C) 2011 Constantine Khroulev
+// Copyright (C) 2011, 2012 PISM Authors
 //
 // This file is part of PISM.
 //
@@ -27,12 +27,10 @@ class POGivenTH : public PGivenClimate<POModifier,PISMOceanModel>
 public:
   POGivenTH(IceGrid &g, const NCConfigVariable &conf)
     : PGivenClimate<POModifier,PISMOceanModel>(g, conf, NULL)
-//  POGivenTH(IceGrid &g, const NCConfigVariable &conf)
-//    : PGivenClimate<POModifier,PISMOceanModel>(g, conf, NULL)
   {
     temp_name       = "thetao";
     mass_flux_name  = "salinity"; //NOTE: salinity_name instead of mass_flux_name
-    option_prefix   = "-ocean_bc";
+    option_prefix   = "-ocean_th";
   }
 
   virtual ~POGivenTH() {}
@@ -46,10 +44,10 @@ public:
   }
 
   virtual PetscErrorCode shelf_base_temperature(IceModelVec2S &result);
-  
+
   virtual PetscErrorCode calculate_boundlayer_temp_and_salt();
 
-  virtual PetscErrorCode shelf_base_mass_flux(IceModelVec2S &result); //NOTE: salinity instead of mass_flux  
+  virtual PetscErrorCode shelf_base_mass_flux(IceModelVec2S &result);
 
   virtual PetscErrorCode shelf_base_temp_salinity_3eqn( PetscReal sal_ocean,
                PetscReal temp_insitu, PetscReal zice, PetscReal &temp_base,
@@ -58,13 +56,13 @@ public:
   virtual PetscErrorCode compute_meltrate_3eqn( PetscReal rhow, PetscReal rhoi,
                PetscReal temp_base, PetscReal sal_base, PetscReal sal_ocean,
                PetscReal &meltrate);
-  
+
   virtual PetscErrorCode adlprt(PetscReal salz, PetscReal temp_insitu, PetscReal pres, PetscReal &adlprt_out);
   virtual PetscErrorCode pttmpr(PetscReal salz, PetscReal temp_insitu, PetscReal pres,PetscReal rfpres, PetscReal &thetao);
   virtual PetscErrorCode potit(PetscReal salz,PetscReal thetao,PetscReal pres,PetscReal rfpres, PetscReal &temp_insitu_out);
   protected:
     IceModelVec2S *ice_thickness; // is not owned by this class
-    IceModelVec2S temp_boundlayer, salinity_boundlayer;  
+    IceModelVec2S temp_boundlayer, salinity_boundlayer;
 };
 
 #endif /* _POGIVENTH_H_ */

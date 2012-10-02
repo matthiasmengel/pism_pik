@@ -79,8 +79,8 @@ PetscErrorCode POGivenTH::update(PetscReal my_t, PetscReal my_dt) {
 
   PetscErrorCode ierr = update_internal(my_t, my_dt); CHKERRQ(ierr);
 
-  ierr = mass_flux.at_time(t); CHKERRQ(ierr);
-  ierr = temp.at_time(t); CHKERRQ(ierr);
+  ierr = mass_flux.at_time(t+0.5*dt); CHKERRQ(ierr);
+  ierr = temp.at_time(t+0.5*dt); CHKERRQ(ierr);
 
   ierr = calculate_boundlayer_temp_and_salt(); CHKERRQ(ierr);
 

@@ -895,7 +895,7 @@ PetscErrorCode IceModel::sub_gl_position() {
         else
           gl_mask_new(i+1,j)+=(interpol-0.5);
         
-        ierr = verbPrintf(2, grid.com,"!!! PISM_INFO: h1=%f, h2=%f, interpol=%f at i=%d, j=%d\n",xpart1,xpart2,interpol,i,j); CHKERRQ(ierr);
+        ierr = verbPrintf(4, grid.com,"!!! PISM_INFO: type=%s, h1=%f, h2=%f, interpol=%f at i=%d, j=%d\n",subgltype.c_str(),xpart1,xpart2,interpol,i,j); CHKERRQ(ierr);
       }
       //if (mask.grounded(i, j) && mask.floating_ice(i-1, j)){
       if (mask.grounded(i, j) && (mask.floating_ice(i-1, j) || mask.ice_free_ocean(i-1, j))){
@@ -916,7 +916,7 @@ PetscErrorCode IceModel::sub_gl_position() {
           //if (vH(i-1, j)>0.0)
             gl_mask_new(i-1,j)+=(interpol-0.5);
         }  
-        ierr = verbPrintf(2, grid.com,"!!! PISM_INFO: h1=%f, h2=%f, interpol=%f at i=%d, j=%d\n",xpart1,xpart2,interpol,i,j); CHKERRQ(ierr);
+        ierr = verbPrintf(4, grid.com,"!!! PISM_INFO: type=%s, h1=%f, h2=%f, interpol=%f at i=%d, j=%d\n",subgltype.c_str(),xpart1,xpart2,interpol,i,j); CHKERRQ(ierr);
       }     
       //if (mask.grounded(i, j) && mask.floating_ice(i, j+1)){
       if (mask.grounded(i, j) && (mask.floating_ice(i, j+1) || mask.ice_free_ocean(i, j+1))){
@@ -936,7 +936,7 @@ PetscErrorCode IceModel::sub_gl_position() {
         else
           gl_mask_new(i,j+1)+=(interpol-0.5);
           
-       ierr = verbPrintf(2, grid.com,"!!! PISM_INFO: h1=%f, h2=%f, interpol=%f at i=%d, j=%d\n",xpart1,xpart2,interpol,i,j); CHKERRQ(ierr);
+       ierr = verbPrintf(4, grid.com,"!!! PISM_INFO: type=%s, h1=%f, h2=%f, interpol=%f at i=%d, j=%d\n",subgltype.c_str(),xpart1,xpart2,interpol,i,j); CHKERRQ(ierr);
       }
       //if (mask.grounded(i, j) && mask.floating_ice(i, j-1)){
       if (mask.grounded(i, j) && (mask.floating_ice(i, j-1) || mask.ice_free_ocean(i, j-1))){
@@ -956,7 +956,7 @@ PetscErrorCode IceModel::sub_gl_position() {
         else
           gl_mask_new(i,j-1)+=(interpol-0.5);
           
-        ierr = verbPrintf(2, grid.com,"!!! PISM_INFO: h1=%f, h2=%f, interpol=%f at i=%d, j=%d\n",xpart1,xpart2,interpol,i,j); CHKERRQ(ierr);
+        ierr = verbPrintf(4, grid.com,"!!! PISM_INFO: type=%s, h1=%f, h2=%f, interpol=%f at i=%d, j=%d\n",subgltype.c_str(),xpart1,xpart2,interpol,i,j); CHKERRQ(ierr);
       }
       if (mask.grounded(i, j))
         gl_mask_new(i,j) = gl_mask_x * gl_mask_y;

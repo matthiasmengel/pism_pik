@@ -731,5 +731,8 @@ PetscErrorCode set_config_from_options(MPI_Comm /*com*/, NCConfigVariable &confi
     config.set_flag("use_ssa_when_grounded", true);
   }
 
+  // Ocean model "th"
+  ierr = config.scalar_from_option("gamma_T", "gamma_T"); CHKERRQ(ierr);
+  
   return 0;
 }

@@ -49,11 +49,11 @@ public:
 
   virtual PetscErrorCode shelf_base_mass_flux(IceModelVec2S &result);
 
-  virtual PetscErrorCode shelf_base_temp_salinity_3eqn( PetscReal sal_ocean,
+  virtual PetscErrorCode shelf_base_temp_salinity_3eqn(vector<double> gat_array, PetscInt i, PetscInt j, PetscReal sal_ocean,
                PetscReal temp_insitu, PetscReal zice, PetscReal &temp_base,
                PetscReal &sal_base);
 
-  virtual PetscErrorCode compute_meltrate_3eqn( PetscReal rhow, PetscReal rhoi,
+  virtual PetscErrorCode compute_meltrate_3eqn(vector<double> gat_array, PetscReal rhow, PetscReal rhoi,
                PetscReal temp_base, PetscReal sal_base, PetscReal sal_ocean,
                PetscReal &meltrate);
 
@@ -63,6 +63,10 @@ public:
   protected:
     IceModelVec2S *ice_thickness; // is not owned by this class
     IceModelVec2S temp_boundlayer, salinity_boundlayer;
+   
+    vector<double> gat_array;
+    bool gamma_T_set;
+    bool gamma_T_separate_set;
 };
 
 #endif /* _POGIVENTH_H_ */

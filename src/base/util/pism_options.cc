@@ -733,6 +733,6 @@ PetscErrorCode set_config_from_options(MPI_Comm /*com*/, NCConfigVariable &confi
 
   // Ocean model "th"
   ierr = config.scalar_from_option("gamma_T", "gamma_T"); CHKERRQ(ierr);
-  
+  ierr = config.scalar_from_option("gamma_S", "gamma_S"); CHKERRQ(ierr);
   return 0;
 }

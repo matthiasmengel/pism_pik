@@ -270,14 +270,10 @@ netcdf pism_config {
     pism_config:nuBedrock_doc = "Pa s; Staggered Viscosity used as side friction parameterization.";
 
     pism_config:gamma_T = 1.0e-4;
-    pism_config:gamma_T_doc = "m s-1; Turbulent heat exchange coefficient used in ocean component '-ocean th'."; 
+    pism_config:gamma_T_doc = "m s-1; Turbulent heat exchange coefficient used in ocean component '-ocean th'. Default value from Hellmer and Olbers 89.";
 
-    //pism_config:gamma_T_PIG_South = 1.0e-4;
-    //pism_config:gamma_T_PIG_South_doc = "m s-1; Turbulent heat exchange coefficient used for southern PIG ice shelf in ocean component '-ocean th'.";
-
-    //pism_config:gamma_T_TG = 1.0e-4;
-    //pism_config:gamma_T_TG_doc = "m s-1; Turbulent heat exchange coefficient used for southern TG ice shelf in ocean component '-ocean th'.";
-
+    pism_config:gamma_S = 5.05e-7;
+    pism_config:gamma_S_doc = "m s-1; Turbulent salt exchange coefficient used in ocean component '-ocean th'. Default value from Hellmer and Olbers 89."; 
 
     // for next constants, note (VELOCITY/LENGTH)^2  is very close to 10^-27; compare "\epsilon^2/L^2" which
     // appears in formula (4.1) in C. Schoof 2006 "A variational approach to ice streams" J Fluid Mech 556 pp 227--251

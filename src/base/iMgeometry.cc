@@ -50,6 +50,7 @@ PetscErrorCode IceModel::updateSurfaceElevationAndMask() {
 
   if (config.get_flag("kill_icebergs")) {
     ierr = killIceBergs(); CHKERRQ(ierr);
+    ierr = killIceBergs(); CHKERRQ(ierr);
   }
 
   if (config.get_flag("sub_groundingline")) {

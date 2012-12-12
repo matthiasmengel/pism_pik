@@ -25,6 +25,7 @@
 #include "PISMOcean.hh"
 #include "PISMSurface.hh"
 #include "PISMStressBalance.hh"
+#include "pism_options.hh"
 
 //! \file iMgeometry.cc Methods of IceModel which update and maintain consistency of ice sheet geometry.
 
@@ -50,7 +51,7 @@ PetscErrorCode IceModel::updateSurfaceElevationAndMask() {
   if (config.get_flag("kill_icebergs")) {
     ierr = killIceBergs(); CHKERRQ(ierr);
   }
-  
+
   if (config.get_flag("sub_groundingline")) {
     ierr = sub_gl_position(); CHKERRQ(ierr);
   }
@@ -510,6 +511,7 @@ PetscErrorCode IceModel::massContExplicitStep() {
 
   // FIXME: use corrected cell areas (when available)
   PetscScalar factor = config.get("ice_density") * (dx * dy);
+  PetscReal rhoq     = config.get("ice_density")/config.get("sea_water_density");
 
   if (surface != NULL) {
     ierr = surface->ice_surface_mass_flux(acab); CHKERRQ(ierr);
@@ -518,7 +520,7 @@ PetscErrorCode IceModel::massContExplicitStep() {
   if (ocean != NULL) {
     ierr = ocean->shelf_base_mass_flux(shelfbmassflux); CHKERRQ(ierr);
   } else { SETERRQ(grid.com, 2, "PISM ERROR: ocean == NULL"); }
-  
+
   // const bool sub_gl = config.get_flag("sub_groundingline");
   // if (sub_gl){
   //   ierr = gl_mask.begin_access(); CHKERRQ(ierr);
@@ -545,8 +547,14 @@ PetscErrorCode IceModel::massContExplicitStep() {
   // related to PIK part_grid mechanism; see Albrecht et al 2011
   const bool do_part_grid = config.get_flag("part_grid"),
     do_redist = config.get_flag("part_redist");
+  PetscReal pgg_coeff = 1.0; // value for grounded, 1.0 like part grid for floating.
   if (do_part_grid) {
+    bool pgg_coeff_set;
+    ierr = PISMOptionsReal("-pgg_coeff", "specifies the ratio of partially filled grounded grid box height to its surrounding neighbours", pgg_coeff,  pgg_coeff_set); CHKERRQ(ierr);
+
     ierr = vHref.begin_access(); CHKERRQ(ierr);
+    ierr = vh.begin_access(); CHKERRQ(ierr);
+    ierr = vbed.begin_access(); CHKERRQ(ierr);
     if (do_redist) {
       ierr = vHresidual.begin_access(); CHKERRQ(ierr);
       // FIXME: next line causes mass loss if max_loopcount in redistResiduals()
@@ -554,6 +562,7 @@ PetscErrorCode IceModel::massContExplicitStep() {
       ierr = vHresidual.set(0.0); CHKERRQ(ierr);
     }
   }
+
   const bool dirichlet_bc = config.get_flag("ssa_dirichlet_bc");
   if (dirichlet_bc) {
     ierr = vBCMask.begin_access();  CHKERRQ(ierr);
@@ -623,8 +632,7 @@ PetscErrorCode IceModel::massContExplicitStep() {
       if (mask.ice_free_ocean(i, j)) {
         // Decide whether to apply Albrecht et al 2011 subgrid-scale
         // parameterization
-        if (do_part_grid && mask.next_to_floating_ice(i, j)) {
-
+        if (do_part_grid && mask.next_to_ice(i, j)) {
           // Add the flow contribution to this partially filled cell.
           H_to_Href_flux = -(divQ_SSA + divQ_SIA) * dt;
           vHref(i, j) += H_to_Href_flux;
@@ -637,12 +645,11 @@ PetscErrorCode IceModel::massContExplicitStep() {
             nonneg_rule_flux += vHref(i, j);
             vHref(i, j) = 0;
           }
+          PetscReal H_average = get_average_thickness(
+                          do_redist, vMask.int_star(i, j), vH.star(i, j),
+                          vh.star(i, j), vbed(i,j), pgg_coeff, rhoq);
 
-          PetscReal H_average = get_average_thickness(do_redist,
-                                                      vMask.int_star(i, j),
-                                                      vH.star(i, j)),
-            coverage_ratio = vHref(i, j) / H_average;
-
+          PetscReal coverage_ratio = vHref(i, j) / H_average;
           if (coverage_ratio >= 1.0) {
             // A partially filled grid cell is now considered to be full.
             if (do_redist)
@@ -657,7 +664,6 @@ PetscErrorCode IceModel::massContExplicitStep() {
             surface_mass_balance = 0.0;
             meltrate_floating    = 0.0;
           }
-
           // In this case the SSA flux goes into the Href variable and does not
           // directly contribute to ice thickness at this location.
           proc_sum_divQ_SIA += - divQ_SIA;
@@ -760,6 +766,8 @@ PetscErrorCode IceModel::massContExplicitStep() {
 
   if (do_part_grid) {
     ierr = vHref.end_access(); CHKERRQ(ierr);
+    ierr = vh.end_access(); CHKERRQ(ierr);
+    ierr = vbed.end_access(); CHKERRQ(ierr);
     if (do_redist) {
       ierr = vHresidual.end_access(); CHKERRQ(ierr);
     }
@@ -773,7 +781,7 @@ PetscErrorCode IceModel::massContExplicitStep() {
   if (do_ocean_kill) {
     ierr = ocean_kill_mask.end_access(); CHKERRQ(ierr);
   }
-  
+
   // if (sub_gl){
   //   ierr = gl_mask.end_access(); CHKERRQ(ierr);
   //  }
@@ -851,18 +859,18 @@ PetscErrorCode IceModel::sub_gl_position() {
 
   //GeometryCalculator gc(sea_level, config);
   MaskQuery mask(vMask);
-  
+
   PetscReal ice_rho = config.get("ice_density"),
             ocean_rho = config.get("sea_water_density"),
             rhoq = ice_rho/ocean_rho;
-            
+
   string subgltype = config.get_string("subgl_type");
 
   IceModelVec2S gl_mask_new = vWork2d[0];
   IceModelVec2S gl_mask_unground_x = vWork2d[0];
   IceModelVec2S gl_mask_unground_y = vWork2d[0];
   //ierr = gl_mask.copy_to(gl_mask_new); CHKERRQ(ierr);
-  
+
   ierr =    vH.begin_access(); CHKERRQ(ierr);
   ierr =  vbed.begin_access(); CHKERRQ(ierr);
   ierr = vMask.begin_access(); CHKERRQ(ierr);
@@ -870,7 +878,7 @@ PetscErrorCode IceModel::sub_gl_position() {
   ierr = gl_mask_new.begin_access(); CHKERRQ(ierr);
   ierr = gl_mask_unground_x.begin_access(); CHKERRQ(ierr);
   ierr = gl_mask_unground_y.begin_access(); CHKERRQ(ierr);
-  
+
   ierr = gl_mask_new.set(0.0); CHKERRQ(ierr);
   //gl_mask_unground_x/y state fraction of ungrounding in each, hence start with 1.0
   //only used for floating or ice free regions
@@ -878,11 +886,11 @@ PetscErrorCode IceModel::sub_gl_position() {
   ierr = gl_mask_unground_y.set(1.0); CHKERRQ(ierr);
 
   for (PetscInt i = grid.xs; i < grid.xs + grid.xm; ++i) {
-    for (PetscInt j = grid.ys; j < grid.ys + grid.ym; ++j) { 
-      
-      PetscReal xpart1=0.0, xpart2=0.0, interpol=0.0, gl_mask_x=0.0, gl_mask_y=0.0, interpolPA=0.0; 
-      
-      if (mask.grounded(i, j)) { 
+    for (PetscInt j = grid.ys; j < grid.ys + grid.ym; ++j) {
+
+      PetscReal xpart1=0.0, xpart2=0.0, interpol=0.0, gl_mask_x=0.0, gl_mask_y=0.0, interpolPA=0.0;
+
+      if (mask.grounded(i, j)) {
         gl_mask_x=1.0;
         gl_mask_y=1.0;
       }
@@ -897,13 +905,13 @@ PetscErrorCode IceModel::sub_gl_position() {
           interpolPA=1.0;
         else if (interpolPA<0.0)
           interpolPA=0.0;
-        interpol=interpolPA;       
+        interpol=interpolPA;
         }
         if (interpol<0.5)
           gl_mask_x+=(interpol-0.5);
         else
 	  gl_mask_unground_x(i+1,j)-=(interpol-0.5);
-	  
+
         ierr = verbPrintf(4, grid.com,"!!! PISM_INFO: type=%s, h1=%f, h2=%f, interpol=%f at i=%d, j=%d\n",subgltype.c_str(),xpart1,xpart2,interpol,i,j); CHKERRQ(ierr);
       }
       //if (mask.grounded(i, j) && mask.floating_ice(i-1, j)){
@@ -917,16 +925,16 @@ PetscErrorCode IceModel::sub_gl_position() {
           interpolPA=1.0;
         else if (interpolPA<0.0)
           interpolPA=0.0;
-        interpol=interpolPA;       
+        interpol=interpolPA;
         }
         if (interpol<0.5)
           gl_mask_x+=(interpol-0.5);
         else{
           //if (vH(i-1, j)>0.0)
             gl_mask_unground_x(i-1,j)-=(interpol-0.5);
-        }  
+        }
         ierr = verbPrintf(4, grid.com,"!!! PISM_INFO: type=%s, h1=%f, h2=%f, interpol=%f at i=%d, j=%d\n",subgltype.c_str(),xpart1,xpart2,interpol,i,j); CHKERRQ(ierr);
-      }     
+      }
       //if (mask.grounded(i, j) && mask.floating_ice(i, j+1)){
       if (mask.grounded(i, j) && (mask.floating_ice(i, j+1) || mask.ice_free_ocean(i, j+1))){
         xpart1=vbed(i, j)-sea_level+vH(i, j)*rhoq;
@@ -938,13 +946,13 @@ PetscErrorCode IceModel::sub_gl_position() {
           interpolPA=1.0;
         else if (interpolPA<0.0)
           interpolPA=0.0;
-        interpol=interpolPA;       
+        interpol=interpolPA;
         }
         if (interpol<0.5)
           gl_mask_y+=(interpol-0.5);
         else
           gl_mask_unground_y(i,j+1)-=(interpol-0.5);
-          
+
        ierr = verbPrintf(4, grid.com,"!!! PISM_INFO: type=%s, h1=%f, h2=%f, interpol=%f at i=%d, j=%d\n",subgltype.c_str(),xpart1,xpart2,interpol,i,j); CHKERRQ(ierr);
       }
       //if (mask.grounded(i, j) && mask.floating_ice(i, j-1)){
@@ -953,18 +961,18 @@ PetscErrorCode IceModel::sub_gl_position() {
         xpart2=vbed(i, j-1)-sea_level+vH(i, j-1)*rhoq;
         interpol=xpart1/(xpart1-xpart2);
         if (subgltype=="PA") {
-        interpolPA = (vH(i, j-1)*vH(i, j)*rhoq + vbed(i, j)) / (vH(i, j-1)*vbed(i, j) - vbed(i, j-1)*vH(i, j)); //Pattyn 
+        interpolPA = (vH(i, j-1)*vH(i, j)*rhoq + vbed(i, j)) / (vH(i, j-1)*vbed(i, j) - vbed(i, j-1)*vH(i, j)); //Pattyn
         if (interpolPA>1.0)
           interpolPA=1.0;
         else if (interpolPA<0.0)
           interpolPA=0.0;
-        interpol=interpolPA;       
+        interpol=interpolPA;
         }
         if (interpol<0.5)
           gl_mask_y+=(interpol-0.5);
         else
           gl_mask_unground_y(i,j-1)-=(interpol-0.5);
-          
+
         ierr = verbPrintf(4, grid.com,"!!! PISM_INFO: type=%s, h1=%f, h2=%f, interpol=%f at i=%d, j=%d\n",subgltype.c_str(),xpart1,xpart2,interpol,i,j); CHKERRQ(ierr);
       }
       if (mask.grounded(i, j))
@@ -973,7 +981,7 @@ PetscErrorCode IceModel::sub_gl_position() {
   } // outer for loop (i)
 
   for (PetscInt i = grid.xs; i < grid.xs + grid.xm; ++i) {
-    for (PetscInt j = grid.ys; j < grid.ys + grid.ym; ++j) { 
+    for (PetscInt j = grid.ys; j < grid.ys + grid.ym; ++j) {
       if (mask.floating_ice(i,j) || mask.ice_free_ocean(i,j))
 	gl_mask_new(i,j) = 1.0 - gl_mask_unground_x(i,j) * gl_mask_unground_y(i,j);
     }
@@ -986,11 +994,11 @@ PetscErrorCode IceModel::sub_gl_position() {
   ierr =     gl_mask_new.end_access(); CHKERRQ(ierr);
   ierr =     gl_mask_unground_x.end_access(); CHKERRQ(ierr);
   ierr =     gl_mask_unground_y.end_access(); CHKERRQ(ierr);
-  
+
   // finally copy gl_mask_new into gl_mask and communicate ghosted values
   //ierr = gl_mask_new.beginGhostComm(gl_mask); CHKERRQ(ierr);
   //ierr = gl_mask_new.endGhostComm(gl_mask); CHKERRQ(ierr);
-  
+
   ierr = gl_mask_new.copy_to(gl_mask); CHKERRQ(ierr);
 
   return 0;

@@ -35,23 +35,63 @@
   FIXME: does not account for grounded tributaries: thin ice shelves may
   evolve from grounded tongue
 */
-PetscReal IceModel::get_average_thickness(bool do_redist, planeStar<int> M, planeStar<PetscScalar> H) {
+PetscReal IceModel::get_average_thickness(
+    bool do_redist, planeStar<int> M, planeStar<PetscScalar> H, planeStar<PetscScalar> h,
+    PetscReal bed_ij, PetscReal pgg_coeff, PetscReal rhoq) {
+
+  PetscErrorCode ierr;
+  ierr = verbPrintf(4, grid.com, "######### partial grid cell() start\n"); CHKERRQ(ierr);
 
   // get mean ice thickness over adjacent floating ice shelf neighbors
   PetscReal H_average = 0.0;
   PetscInt N = 0;
   Mask m;
 
-  if (m.floating_ice(M.e)) { H_average += H.e; N++; }
-  if (m.floating_ice(M.w)) { H_average += H.w; N++; }
-  if (m.floating_ice(M.n)) { H_average += H.n; N++; }
-  if (m.floating_ice(M.s)) { H_average += H.s; N++; }
+  // get H_pgg from ice surface elevation
+  PetscReal h_pgg = 0.0, H_pgg = 0.0, H_pgg_fromsurf = 0.0;
 
-  if (N == 0) {
-    SETERRQ(grid.com, 1, "N == 0;  call this only if a neighbor is floating!\n");
+  if (m.icy(M.e)) { h_pgg += h.e; N++; }
+  if (m.icy(M.w)) { h_pgg += h.w; N++; }
+  if (m.icy(M.n)) { h_pgg += h.n; N++; }
+  if (m.icy(M.s)) { h_pgg += h.s; N++; }
+
+  if (N == 0)
+    SETERRQ(grid.com, 1, "N == 0;  call this only if a neighbor is icy!\n");
+
+  h_pgg = h_pgg / N;
+
+  // this is H_pgg attached to floating cell floating
+  H_pgg_fromsurf = h_pgg / (1. - rhoq);
+
+  // if this is too thick to float, assume partial cell to be grounded.
+  if (H_pgg_fromsurf > (h_pgg - bed_ij))
+    H_pgg_fromsurf = h_pgg - bed_ij;
+
+  // define a cliff as mean bedrock being above sea level
+  N = 0;
+  if (m.icy(M.e)) { H_pgg += H.e; N++; }
+  if (m.icy(M.w)) { H_pgg += H.w; N++; }
+  if (m.icy(M.n)) { H_pgg += H.n; N++; }
+  if (m.icy(M.s)) { H_pgg += H.s; N++; }
+  H_pgg = H_pgg / N;
+
+  // H_pgg = zero is equivalent to not applying the pg mechanism as it gets "full" immediately.
+  // we apply this at cliffs.
+  if ((h_pgg - H_pgg) >= 0.) // FIXME: sea level
+    H_pgg_fromsurf = 0.;
+
+  // this is H_pgg for a flat surface elevation when floating
+  H_pgg_fromsurf = h_pgg / (1. - rhoq);
+
+  // if this is too thick to float, determine Hpgg to be grounded.
+  if (H_pgg_fromsurf > (h_pgg - bed_ij)){
+    H_pgg_fromsurf = h_pgg - bed_ij;
+    // scale grounded partial grid height
+    H_pgg_fromsurf = H_pgg_fromsurf * pgg_coeff;
   }
 
-  H_average = H_average / N;
+  H_average = H_pgg_fromsurf;
+
 
   // reduces the guess at the front
   if (do_redist) {
@@ -115,7 +155,7 @@ PetscErrorCode IceModel::calculateRedistResiduals() {
     for (PetscInt j = grid.ys; j < grid.ys + grid.ym; ++j) {
       // first step: distributing residual ice masses
       if (vHresidual(i, j) > 0.0 && putOnTop==PETSC_FALSE) {
-        
+
         planeStar<PetscScalar> thk = vH.star(i, j),
           bed = vbed.star(i, j);
 
@@ -140,9 +180,9 @@ PetscErrorCode IceModel::calculateRedistResiduals() {
         } else {
           vHnew(i, j) += vHresidual(i, j); // mass conservation, but thick ice at one grid cell possible
           vHresidualnew(i, j) = 0.0;
-          ierr = verbPrintf(4, grid.com, 
+          ierr = verbPrintf(4, grid.com,
                             "!!! PISM WARNING: Hresidual has %d partially filled neighbors, "
-                            " set ice thickness to vHnew = %.2e at %d, %d \n", 
+                            " set ice thickness to vHnew = %.2e at %d, %d \n",
                             N, vHnew(i, j), i, j ); CHKERRQ(ierr);
         }
       }
@@ -193,9 +233,9 @@ PetscErrorCode IceModel::calculateRedistResiduals() {
           vHnew(i, j) += vHref(i, j); // mass conservation, but thick ice at one grid cell possible
           vHref(i, j) = 0.0;
           vHresidualnew(i, j) = 0.0;
-	      ierr = verbPrintf(4, grid.com, 
+	      ierr = verbPrintf(4, grid.com,
                             "!!! PISM WARNING: Hresidual=%.2f with %d partially filled neighbors, "
-                            " set ice thickness to vHnew = %.2f at %d, %d \n", 
+                            " set ice thickness to vHnew = %.2f at %d, %d \n",
                             vHresidual(i, j), N , vHnew(i, j), i, j ); CHKERRQ(ierr);
         }
       }
@@ -207,7 +247,7 @@ PetscErrorCode IceModel::calculateRedistResiduals() {
   ierr = vbed.end_access(); CHKERRQ(ierr);
   ierr = vHresidual.end_access(); CHKERRQ(ierr);
   ierr = vHresidualnew.end_access(); CHKERRQ(ierr);
-  
+
   PetscScalar gHcut; //check, if redistribution should be run once more
   ierr = PISMGlobalSum(&Hcut, &gHcut, grid.com); CHKERRQ(ierr);
   putOnTop = PETSC_FALSE;

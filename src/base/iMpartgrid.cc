@@ -37,7 +37,9 @@
 */
 PetscReal IceModel::get_average_thickness(
     bool do_redist, planeStar<int> M, planeStar<PetscScalar> H, planeStar<PetscScalar> h,
-    PetscReal bed_ij, PetscReal pgg_coeff, PetscReal rhoq) {
+    PetscReal bed_ij, PetscReal pgg_coeff, PetscReal rhoq, bool &iscliff) {
+
+ // FIXME: add support for sea level != 0
 
   PetscErrorCode ierr;
   ierr = verbPrintf(4, grid.com, "######### partial grid cell() start\n"); CHKERRQ(ierr);
@@ -75,10 +77,11 @@ PetscReal IceModel::get_average_thickness(
   if (m.icy(M.s)) { H_pgg += H.s; N++; }
   H_pgg = H_pgg / N;
 
-  // H_pgg = zero is equivalent to not applying the pg mechanism as it gets "full" immediately.
-  // we apply this at cliffs.
-  if ((h_pgg - H_pgg) >= 0.) // FIXME: sea level
-    H_pgg_fromsurf = 0.;
+  // we do not applying the pg mechanism at cliffs.
+  iscliff = false;
+  if ((h_pgg - H_pgg) >= 0.) iscliff = true;
+
+
 
   // this is H_pgg for a flat surface elevation when floating
   H_pgg_fromsurf = h_pgg / (1. - rhoq);

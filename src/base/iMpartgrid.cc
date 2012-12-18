@@ -39,72 +39,64 @@ PetscReal IceModel::get_average_thickness(
     bool do_redist, planeStar<int> M, planeStar<PetscScalar> H, planeStar<PetscScalar> h,
     PetscReal bed_ij, PetscReal pgg_coeff, PetscReal rhoq, bool &iscliff) {
 
+ // determine the thickness of partial grid (pg) cells H_pg
+ // detect if the ice margin is at a cliff, pg is not applied in this case.
  // FIXME: add support for sea level != 0
 
   PetscErrorCode ierr;
   ierr = verbPrintf(4, grid.com, "######### partial grid cell() start\n"); CHKERRQ(ierr);
 
-  // get mean ice thickness over adjacent floating ice shelf neighbors
-  PetscReal H_average = 0.0;
+  // get mean ice thickness over adjacent ice filled boxes
+  PetscReal h_pg = 0.0, H_pg = 0.0, H_nbs = 0.0;
   PetscInt N = 0;
   Mask m;
 
-  // get H_pgg from ice surface elevation
-  PetscReal h_pgg = 0.0, H_pgg = 0.0, H_pgg_fromsurf = 0.0;
-
-  if (m.icy(M.e)) { h_pgg += h.e; N++; }
-  if (m.icy(M.w)) { h_pgg += h.w; N++; }
-  if (m.icy(M.n)) { h_pgg += h.n; N++; }
-  if (m.icy(M.s)) { h_pgg += h.s; N++; }
+  // get h_pg, the mean surface elevation of ice filled neighbours
+  if (m.icy(M.e)) { h_pg += h.e; N++; }
+  if (m.icy(M.w)) { h_pg += h.w; N++; }
+  if (m.icy(M.n)) { h_pg += h.n; N++; }
+  if (m.icy(M.s)) { h_pg += h.s; N++; }
 
   if (N == 0)
     SETERRQ(grid.com, 1, "N == 0;  call this only if a neighbor is icy!\n");
 
-  h_pgg = h_pgg / N;
+  h_pg = h_pg / N;
 
-  // this is H_pgg attached to floating cell floating
-  H_pgg_fromsurf = h_pgg / (1. - rhoq);
+  // this is H_pg attached to floating cell floating
+  H_pg = h_pg / (1. - rhoq);
 
   // if this is too thick to float, assume partial cell to be grounded.
-  if (H_pgg_fromsurf > (h_pgg - bed_ij))
-    H_pgg_fromsurf = h_pgg - bed_ij;
-
-  // define a cliff as mean bedrock being above sea level
-  N = 0;
-  if (m.icy(M.e)) { H_pgg += H.e; N++; }
-  if (m.icy(M.w)) { H_pgg += H.w; N++; }
-  if (m.icy(M.n)) { H_pgg += H.n; N++; }
-  if (m.icy(M.s)) { H_pgg += H.s; N++; }
-  H_pgg = H_pgg / N;
-
-  // we do not applying the pg mechanism at cliffs.
-  iscliff = false;
-  if ((h_pgg - H_pgg) >= 0.) iscliff = true;
-
-
-
-  // this is H_pgg for a flat surface elevation when floating
-  H_pgg_fromsurf = h_pgg / (1. - rhoq);
-
-  // if this is too thick to float, determine Hpgg to be grounded.
-  if (H_pgg_fromsurf > (h_pgg - bed_ij)){
-    H_pgg_fromsurf = h_pgg - bed_ij;
+  if (H_pg > (h_pg - bed_ij)){
+    H_pg = h_pg - bed_ij;
     // scale grounded partial grid height
-    H_pgg_fromsurf = H_pgg_fromsurf * pgg_coeff;
+    H_pg = H_pg * pgg_coeff;
   }
 
-  H_average = H_pgg_fromsurf;
+  // check if the mean surface elevation of icy neighbours h_pg is greater than
+  // the mean ice thickness of icy neighbours H_nbs.
+  // define this as a cliff, no pg applied then.
+
+  N = 0;
+  if (m.icy(M.e)) { H_nbs+= H.e; N++; }
+  if (m.icy(M.w)) { H_nbs+= H.w; N++; }
+  if (m.icy(M.n)) { H_nbs+= H.n; N++; }
+  if (m.icy(M.s)) { H_nbs+= H.s; N++; }
+  H_nbs= H_nbs/ N;
+
+  iscliff = false;
+  if ((h_pg - H_nbs) >= 0.) iscliff = true;
 
 
   // reduces the guess at the front
+  // FIXME: should we exclude this at grounded margins?
   if (do_redist) {
     const PetscReal  mslope = 2.4511e-18*grid.dx / (300*600 / secpera);
     // for declining front C / Q0 according to analytical flowline profile in
     //   vandeveen with v0 = 300m / yr and H0 = 600m
-    H_average -= 0.8*mslope*pow(H_average, 5);
+    H_pg -= 0.8*mslope*pow(H_pg, 5);
   }
 
-  return H_average;
+  return H_pg;
 }
 
 

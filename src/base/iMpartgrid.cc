@@ -37,7 +37,7 @@
 */
 PetscReal IceModel::get_average_thickness(
     bool do_redist, planeStar<int> M, planeStar<PetscScalar> H, planeStar<PetscScalar> h,
-    PetscReal bed_ij, PetscReal pgg_coeff, PetscReal rhoq, bool &iscliff) {
+    PetscReal bed_ij, PetscReal pgg_coeff, PetscReal rhoq) {
 
  // determine the thickness of partial grid (pg) cells H_pg
  // detect if the ice margin is at a cliff, pg is not applied in this case.
@@ -46,46 +46,38 @@ PetscReal IceModel::get_average_thickness(
   PetscErrorCode ierr;
   ierr = verbPrintf(4, grid.com, "######### partial grid cell() start\n"); CHKERRQ(ierr);
 
-  // get mean ice thickness over adjacent ice filled boxes
+
   PetscReal h_pg = 0.0, H_pg = 0.0, H_nbs = 0.0;
   PetscInt N = 0;
   Mask m;
 
+  // get mean ice thickness over adjacent ice filled boxes
+  if (m.icy(M.e)) { H_pg+= H.e; N++; }
+  if (m.icy(M.w)) { H_pg+= H.w; N++; }
+  if (m.icy(M.n)) { H_pg+= H.n; N++; }
+  if (m.icy(M.s)) { H_pg+= H.s; N++; }
+
+  if (N == 0)
+    SETERRQ(grid.com, 1, "N == 0;  call this only if a neighbor is icy!\n");
+
+  H_pg = H_pg/ N;
+
+
   // get h_pg, the mean surface elevation of ice filled neighbours
+  N = 0;
   if (m.icy(M.e)) { h_pg += h.e; N++; }
   if (m.icy(M.w)) { h_pg += h.w; N++; }
   if (m.icy(M.n)) { h_pg += h.n; N++; }
   if (m.icy(M.s)) { h_pg += h.s; N++; }
 
-  if (N == 0)
-    SETERRQ(grid.com, 1, "N == 0;  call this only if a neighbor is icy!\n");
-
   h_pg = h_pg / N;
 
-  // this is H_pg attached to floating cell floating
-  H_pg = h_pg / (1. - rhoq);
 
-  // if this is too thick to float, assume partial cell to be grounded.
+  // if H_pg  would lead to upward sloping surface elevation,
+  // choose H_pg to extend surface elevation in a constant way.
   if (H_pg > (h_pg - bed_ij)){
     H_pg = h_pg - bed_ij;
-    // scale grounded partial grid height
-    H_pg = H_pg * pgg_coeff;
   }
-
-  // check if the mean surface elevation of icy neighbours h_pg is greater than
-  // the mean ice thickness of icy neighbours H_nbs.
-  // define this as a cliff, no pg applied then.
-
-  N = 0;
-  if (m.icy(M.e)) { H_nbs+= H.e; N++; }
-  if (m.icy(M.w)) { H_nbs+= H.w; N++; }
-  if (m.icy(M.n)) { H_nbs+= H.n; N++; }
-  if (m.icy(M.s)) { H_nbs+= H.s; N++; }
-  H_nbs= H_nbs/ N;
-
-  iscliff = false;
-  if ((h_pg - H_nbs) >= 0.) iscliff = true;
-
 
   // reduces the guess at the front
   // FIXME: should we exclude this at grounded margins?
@@ -228,7 +220,7 @@ PetscErrorCode IceModel::calculateRedistResiduals() {
           vHnew(i, j) += vHref(i, j); // mass conservation, but thick ice at one grid cell possible
           vHref(i, j) = 0.0;
           vHresidualnew(i, j) = 0.0;
-	      ierr = verbPrintf(4, grid.com,
+        ierr = verbPrintf(4, grid.com,
                             "!!! PISM WARNING: Hresidual=%.2f with %d partially filled neighbors, "
                             " set ice thickness to vHnew = %.2f at %d, %d \n",
                             vHresidual(i, j), N , vHnew(i, j), i, j ); CHKERRQ(ierr);

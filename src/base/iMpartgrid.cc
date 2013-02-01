@@ -40,7 +40,6 @@ PetscReal IceModel::get_average_thickness(
     PetscReal bed_ij, PetscReal pgg_coeff, PetscReal rhoq) {
 
  // determine the thickness of partial grid (pg) cells H_pg
- // detect if the ice margin is at a cliff, pg is not applied in this case.
  // FIXME: add support for sea level != 0
 
   PetscErrorCode ierr;

@@ -515,8 +515,15 @@ PetscErrorCode IceModel::enthalpyAndDrainageStep(
           ierr = esys->viewColumnInfoMFile(Enthnew, fMz); CHKERRQ(ierr);
         }
 
-	if (sub_gl)
+        if (sub_gl){
+          //ierr = verbPrintf(2, grid.com, "vbmr before subgl=%e at (%d,%d)\n", vbmr(i,j),i, j); CHKERRQ(ierr);
           vbmr(i,j) = (1.0 - gl_mask(i,j)) * shelfbmassflux(i,j) + gl_mask(i,j) * vbmr(i, j);
+          //ierr = verbPrintf(2, grid.com, "vbmr after subgl=%e, shelfbm=%e, glmask=%f at (%d,%d)\n", vbmr(i,j),shelfbmassflux(i,j),gl_mask(i,j),i, j); 
+        }
+
+
+	//if (sub_gl)
+          //vbmr(i,j) = (1.0 - gl_mask(i,j)) * shelfbmassflux(i,j) + gl_mask(i,j) * vbmr(i, j);
 
         // thermodynamic basal melt rate causes water to be added to layer
         PetscScalar bwatnew = vbwat(i,j);

@@ -77,10 +77,10 @@ PetscErrorCode SSA::init(PISMVars &vars) {
   driving_stress_y = dynamic_cast<IceModelVec2S*>(vars.get("ssa_driving_stress_y"));
   if( (driving_stress_x==NULL) && (driving_stress_y==NULL) ) {
     if(surface == NULL) {
-      SETERRQ(grid.com, 1, "neither surface_altitude nor ssa_driving_stress_x/y is available");      
+      SETERRQ(grid.com, 1, "neither surface_altitude nor ssa_driving_stress_x/y is available");
     }
   } else if(surface !=NULL){
-    SETERRQ(grid.com, 1, "at most one of surface_altitude or ssa_driving_stress_x/y may be specified");    
+    SETERRQ(grid.com, 1, "at most one of surface_altitude or ssa_driving_stress_x/y may be specified");
   } else if( (driving_stress_x==NULL) || (driving_stress_y==NULL) ) {
     SETERRQ(grid.com, 1, "both of ssa_driving_stress_x/y must be specified if one is");
   }
@@ -107,19 +107,19 @@ PetscErrorCode SSA::init(PISMVars &vars) {
     ierr = PISMOptionsIsSet("-dontreadSSAvels", dont_read_initial_guess); CHKERRQ(ierr);
 
     ierr = nc.open(filename, PISM_NOWRITE); CHKERRQ(ierr);
-    ierr = nc.inq_var("u_ssa", u_ssa_found); CHKERRQ(ierr); 
-    ierr = nc.inq_var("v_ssa", v_ssa_found); CHKERRQ(ierr); 
+    ierr = nc.inq_var("u_ssa", u_ssa_found); CHKERRQ(ierr);
+    ierr = nc.inq_var("v_ssa", v_ssa_found); CHKERRQ(ierr);
     ierr = nc.inq_nrecords(start); CHKERRQ(ierr);
-    ierr = nc.close(); CHKERRQ(ierr); 
+    ierr = nc.close(); CHKERRQ(ierr);
     start -= 1;
 
     if (u_ssa_found && v_ssa_found &&
         (! dont_read_initial_guess)) {
       ierr = verbPrintf(3,grid.com,"Reading u_ssa and v_ssa...\n"); CHKERRQ(ierr);
 
-      ierr = velocity.read(filename.c_str(), start); CHKERRQ(ierr); 
+      ierr = velocity.read(filename.c_str(), start); CHKERRQ(ierr);
     }
-    
+
   } else {
     ierr = velocity.set(0.0); CHKERRQ(ierr); // default initial guess
   }
@@ -127,7 +127,7 @@ PetscErrorCode SSA::init(PISMVars &vars) {
   if (config.get_flag("ssa_dirichlet_bc")) {
     bc_locations = dynamic_cast<IceModelVec2Int*>(vars.get("bcflag"));
     if (bc_locations == NULL) SETERRQ(grid.com, 1, "bc_locations is not available");
-    
+
     vel_bc = dynamic_cast<IceModelVec2V*>(vars.get("vel_ssa_bc"));
     if (vel_bc == NULL) SETERRQ(grid.com, 1, "vel_ssa_bc is not available");
   }
@@ -216,7 +216,7 @@ PetscErrorCode SSA::update(bool fast) {
 
   grid.profiler->begin(event_ssa);
 
-  ierr = solve(); CHKERRQ(ierr); 
+  ierr = solve(); CHKERRQ(ierr);
 
   ierr = compute_basal_frictional_heating(basal_frictional_heating); CHKERRQ(ierr);
   ierr = compute_D2(D2); CHKERRQ(ierr);
@@ -241,12 +241,12 @@ PetscErrorCode SSA::compute_D2(IceModelVec2S &result) {
   ierr = result.begin_access(); CHKERRQ(ierr);
   for (PetscInt   i = grid.xs; i < grid.xs+grid.xm; ++i) {
     for (PetscInt j = grid.ys; j < grid.ys+grid.ym; ++j) {
-      const PetscScalar 
+      const PetscScalar
           u_x   = (velocity(i+1,j).u - velocity(i-1,j).u)/(2*dx),
           u_y   = (velocity(i,j+1).u - velocity(i,j-1).u)/(2*dy),
           v_x   = (velocity(i+1,j).v - velocity(i-1,j).v)/(2*dx),
           v_y   = (velocity(i,j+1).v - velocity(i,j-1).v)/(2*dy);
-      result(i,j) = PetscSqr(u_x) + PetscSqr(v_y) + u_x * v_y 
+      result(i,j) = PetscSqr(u_x) + PetscSqr(v_y) + u_x * v_y
                       + PetscSqr(0.5*(u_y + v_x));
     }
   }
@@ -267,7 +267,7 @@ strain rates near calving front.
 Though there are two eigenvalues, such do not form a vector, so the output is not
 an IceModelVec2V, though it could be a std::vector<IceModelVec2S> or such.
 
-Note that \c result_e1 >= \c result_e2, but there is no necessary relation between 
+Note that \c result_e1 >= \c result_e2, but there is no necessary relation between
 the magnitudes, and either principal strain rate could be negative or positive.
 
 Result can be used in a calving law, for example in eigencalving (PIK).
@@ -375,13 +375,13 @@ PetscErrorCode SSA::compute_basal_frictional_heating(IceModelVec2S &result) {
   ierr = result.begin_access(); CHKERRQ(ierr);
   ierr = tauc->begin_access(); CHKERRQ(ierr);
   ierr = mask->begin_access(); CHKERRQ(ierr);
-  
+
   for (PetscInt   i = grid.xs; i < grid.xs+grid.xm; ++i) {
     for (PetscInt j = grid.ys; j < grid.ys+grid.ym; ++j) {
       if (m.ocean(i,j)) {
         result(i,j) = 0.0;
       } else {
-        const PetscScalar 
+        const PetscScalar
           C = basal.drag((*tauc)(i,j), velocity(i,j).u, velocity(i,j).v),
               basal_stress_x = - C * velocity(i,j).u,
               basal_stress_y = - C * velocity(i,j).v;
@@ -447,7 +447,7 @@ PetscErrorCode SSA::compute_driving_stress(IceModelVec2V &result) {
         PetscScalar h_x = 0.0, h_y = 0.0;
         // FIXME: we need to handle grid periodicity correctly.
         if (m.grounded(i,j) && (use_eta == true)) {
-	        // in grounded case, differentiate eta = H^{8/3} by chain rule
+          // in grounded case, differentiate eta = H^{8/3} by chain rule
           if (thk(i,j) > 0.0) {
             const PetscScalar myH = (thk(i,j) < minThickEtaTransform ?
                                      minThickEtaTransform : thk(i,j));
@@ -465,68 +465,68 @@ PetscErrorCode SSA::compute_driving_stress(IceModelVec2V &result) {
             h_x = surface->diff_x_p(i,j);
             h_y = surface->diff_y_p(i,j);
           } else {
-	    if (avoid_gl_fix) {
-	      // Old scheme for driving stress computation at grounding line
-	      h_x = surface->diff_x(i,j);
-	      h_y = surface->diff_y(i,j);
-	    } else {
-	    
-	      // To compute the x-derivative we use
-	      // * away from the grounding line -- 2nd order centered difference
-	      //
-	      // * at the grounded cell near the grounding line -- 1st order
-	      //   one-sided difference using the grounded neighbor
-	      //
-	      // * at the floating cell near the grounding line -- 1st order
-	      //   one-sided difference using the floating neighbor
-	      //
-	      // All three cases can be combined by writing h_x as the weighted
-	      // average of one-sided differences, with weights of 0 if a finite
-	      // difference is not used and 1 if it is.
-	      //
-	      // The y derivative is handled the same way.
-	      //
-	      // FIXME: we need to fix the way we compute the driving stress at a
-	      // terminus that lies below the sea level. The surface elevation
-	      // (variable usurf, "surface" here) is set to max(sea_level, topg)
-	      // in ice-free areas, so the surface slope a terminus like this one
-	      // "sees" is lower than it should be.
+            if (avoid_gl_fix) {
+              // Old scheme for driving stress computation at grounding line
+              h_x = surface->diff_x(i,j);
+              h_y = surface->diff_y(i,j);
+            } else {
 
-	      // x-derivative
-	      {
-		double west = 1, east = 1;
-		if ((m.grounded(i,j) && m.ocean(i+1,j)) || (m.ocean(i,j) && m.grounded(i+1,j)) ||
-		    (m.icy(i,j) && m.ice_free(i+1,j)))
-		  east = 0;
-		if ((m.grounded(i,j) && m.ocean(i-1,j)) || (m.ocean(i,j) && m.grounded(i-1,j)) ||
-		    (m.icy(i,j) && m.ice_free(i-1,j)))
-		  west = 0;
+              // To compute the x-derivative we use
+              // * away from the grounding line -- 2nd order centered difference
+              //
+              // * at the grounded cell near the grounding line -- 1st order
+              //   one-sided difference using the grounded neighbor
+              //
+              // * at the floating cell near the grounding line -- 1st order
+              //   one-sided difference using the floating neighbor
+              //
+              // All three cases can be combined by writing h_x as the weighted
+              // average of one-sided differences, with weights of 0 if a finite
+              // difference is not used and 1 if it is.
+              //
+              // The y derivative is handled the same way.
+              //
+              // FIXME: we need to fix the way we compute the driving stress at a
+              // terminus that lies below the sea level. The surface elevation
+              // (variable usurf, "surface" here) is set to max(sea_level, topg)
+              // in ice-free areas, so the surface slope a terminus like this one
+              // "sees" is lower than it should be.
 
-		if (east + west > 0)
-		  h_x = 1.0 / (west + east) * (west * surface->diff_x_stagE(i-1,j) +
-					       east * surface->diff_x_stagE(i,j));
-		else
-		  h_x = 0.0;
-	      }
+              // x-derivative
+              {
+          double west = 1, east = 1;
+          if ((m.grounded(i,j) && m.ocean(i+1,j)) || (m.ocean(i,j) && m.grounded(i+1,j)) ||
+              (m.icy(i,j) && m.ice_free(i+1,j)))
+            east = 0;
+          if ((m.grounded(i,j) && m.ocean(i-1,j)) || (m.ocean(i,j) && m.grounded(i-1,j)) ||
+              (m.icy(i,j) && m.ice_free(i-1,j)))
+            west = 0;
 
-	      // y-derivative
-	      {
-		double south = 1, north = 1;
-		if ((m.grounded(i,j) && m.ocean(i,j+1)) || (m.ocean(i,j) && m.grounded(i,j+1)) ||
-		    (m.icy(i,j) && m.ice_free(i,j+1)))
-		  north = 0;
-		if ((m.grounded(i,j) && m.ocean(i,j-1)) || (m.ocean(i,j) && m.grounded(i,j-1)) ||
-		    (m.icy(i,j) && m.ice_free(i,j-1)))
-		  south = 0;
+          if (east + west > 0)
+            h_x = 1.0 / (west + east) * (west * surface->diff_x_stagE(i-1,j) +
+                       east * surface->diff_x_stagE(i,j));
+          else
+            h_x = 0.0;
+              }
 
-		if (north + south > 0)
-		  h_y = 1.0 / (south + north) * (south * surface->diff_y_stagN(i,j-1) +
-						 north * surface->diff_y_stagN(i,j));
-		else
-		  h_y = 0.0;
-	      }
+              // y-derivative
+              {
+          double south = 1, north = 1;
+          if ((m.grounded(i,j) && m.ocean(i,j+1)) || (m.ocean(i,j) && m.grounded(i,j+1)) ||
+              (m.icy(i,j) && m.ice_free(i,j+1)))
+            north = 0;
+          if ((m.grounded(i,j) && m.ocean(i,j-1)) || (m.ocean(i,j) && m.grounded(i,j-1)) ||
+              (m.icy(i,j) && m.ice_free(i,j-1)))
+            south = 0;
+
+          if (north + south > 0)
+            h_y = 1.0 / (south + north) * (south * surface->diff_y_stagN(i,j-1) +
+                   north * surface->diff_y_stagN(i,j));
+          else
+            h_y = 0.0;
+              }
             }
-	  }
+          }
         }
 
         result(i,j).u = - pressure * h_x;
@@ -553,7 +553,7 @@ PetscErrorCode SSA::compute_maximum_velocity() {
 
   ierr = velocity.begin_access(); CHKERRQ(ierr);
   ierr = mask->begin_access(); CHKERRQ(ierr);
-  
+
   MaskQuery m(*mask);
 
   for (PetscInt   i = grid.xs; i < grid.xs+grid.xm; ++i) {
@@ -568,8 +568,8 @@ PetscErrorCode SSA::compute_maximum_velocity() {
   ierr = mask->end_access(); CHKERRQ(ierr);
   ierr = velocity.end_access(); CHKERRQ(ierr);
 
-  ierr = PISMGlobalMax(&my_max_u, &max_u, grid.com); CHKERRQ(ierr); 
-  ierr = PISMGlobalMax(&my_max_v, &max_v, grid.com); CHKERRQ(ierr); 
+  ierr = PISMGlobalMax(&my_max_u, &max_u, grid.com); CHKERRQ(ierr);
+  ierr = PISMGlobalMax(&my_max_v, &max_v, grid.com); CHKERRQ(ierr);
   return 0;
 }
 

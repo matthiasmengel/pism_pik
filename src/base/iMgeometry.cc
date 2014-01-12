@@ -668,6 +668,11 @@ PetscErrorCode IceModel::massContExplicitStep() {
           // Standard ice-free ocean case:
           surface_mass_balance = 0.0;
           meltrate_floating    = 0.0;
+
+          // kill partial grid cells if not attached to ice
+          // FIXME: this destroys mass and has to be accounted
+          vHref(i, j) = 0.0;
+
         }
       } // end of "if (ice_free_ocean)"
 

@@ -34,14 +34,14 @@ public:
     shelfbtemp.init_2d("shelfbtemp", g);
     shelfbtemp.set_string("pism_intent", "climate_state");
     shelfbtemp.set_string("long_name",
-			  "absolute temperature at ice shelf base");
-    shelfbtemp.set_units("Kelvin"); 
+        "absolute temperature at ice shelf base");
+    shelfbtemp.set_units("Kelvin");
 
     shelfbmassflux.init_2d("shelfbmassflux", g);
     shelfbmassflux.set_string("pism_intent", "climate_state");
     shelfbmassflux.set_string("long_name",
-    			      "ice mass flux from ice shelf base (positive flux is loss from ice shelf)");
-    shelfbtemp.set_units("m s-1"); 
+                "ice mass flux from ice shelf base (positive flux is loss from ice shelf)");
+    shelfbtemp.set_units("m s-1");
   }
 
   virtual ~POGivenBMR() {}
@@ -60,14 +60,14 @@ public:
 
   virtual void add_vars_to_output(string keyword, map<string,NCSpatialVariable> &result);
   virtual PetscErrorCode define_variables(set<string> vars, const PIO &nc,
-  					  PISM_IO_Type nctype);
-  virtual PetscErrorCode write_variables(set<string> vars, string filename); 
+              PISM_IO_Type nctype);
+  virtual PetscErrorCode write_variables(set<string> vars, string filename);
 
 protected:
   string reference;
-  bool adjust_bmr_set;
-  PetscReal ref_openocean_shelfthk;
-  IceModelVec2S *ice_thickness, ref_shelfbaseelev_array;
+  bool adjust_bmr_set, bmr_per_K_set;
+  PetscReal ref_openocean_shelfthk, meltrate_increase_per_K;
+  IceModelVec2S *ice_thickness, melt_ref_thk;
   NCSpatialVariable shelfbtemp, shelfbmassflux;
 };
 

@@ -116,6 +116,9 @@ PetscErrorCode POGivenTH::init(PISMVars &vars) {
   ice_thickness = dynamic_cast<IceModelVec2S*>(vars.get("land_ice_thickness"));
   if (!ice_thickness) {SETERRQ(grid.com, 1, "ERROR: ice thickness is not available");}
 
+  topg = dynamic_cast<IceModelVec2S*>(vars.get("bedrock_altitude"));
+  if (!topg) {SETERRQ(grid.com, 1, "ERROR: bedrock altitude is not available");}
+
   // read time-independent data right away:
   if (temp.get_n_records() == 1 && mass_flux.get_n_records() == 1) {
     ierr = update(grid.time->current(), 0); CHKERRQ(ierr); // dt is irrelevant
@@ -181,6 +184,7 @@ PetscErrorCode POGivenTH::calculate_boundlayer_temp_and_salt() {
   PetscReal temp_insitu, temp_base, sal_base;
 
   ierr = ice_thickness->begin_access();   CHKERRQ(ierr);
+  ierr = topg->begin_access();   CHKERRQ(ierr);
   ierr = temp.begin_access(); CHKERRQ(ierr);
   ierr = mass_flux.begin_access(); CHKERRQ(ierr); // NOTE salinity instead of mass_flux
   ierr = salinity_boundlayer.begin_access(); CHKERRQ(ierr);
@@ -193,8 +197,13 @@ PetscErrorCode POGivenTH::calculate_boundlayer_temp_and_salt() {
       PetscReal sal_ocean = mass_flux(i,j); //NOTE salinity instead of mass_flux
       PetscReal press = rhow * -1. * shelfbaseelev/1000. + reference_pressure; //NOTE Unit??
       potit(sal_ocean, thetao, press, reference_pressure, temp_insitu);
-      PetscReal zice = -1 * PetscAbs(shelfbaseelev);
 
+      //ierr = verbPrintf(2, grid.com,
+                    //"shelfbaseelev=%e, topg=%e \n", shelfbaseelev, (*topg)(i,j)); CHKERRQ(ierr);
+
+      // ensure that melting at grounded cells do not yield too large pressure
+      PetscReal zice = -1*PetscMin(PetscAbs(shelfbaseelev),PetscAbs((*topg)(i,j)));
+      //ierr = verbPrintf(2, grid.com, "zice=%e \n", zice); CHKERRQ(ierr);
 
       //shelf_base_temp_salinity_3eqn(gat, sal_ocean, temp_insitu, zice,
       //                                temp_base, sal_base);
@@ -208,6 +217,7 @@ PetscErrorCode POGivenTH::calculate_boundlayer_temp_and_salt() {
     }
   }
   ierr = ice_thickness->end_access(); CHKERRQ(ierr); // NOTE is this way ok? (Yes. -- CK)
+  ierr = topg->end_access(); CHKERRQ(ierr);
   ierr = temp.end_access(); CHKERRQ(ierr);
   ierr = mass_flux.end_access(); CHKERRQ(ierr);
   ierr = salinity_boundlayer.end_access(); CHKERRQ(ierr);

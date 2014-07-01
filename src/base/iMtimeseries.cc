@@ -147,7 +147,7 @@ PetscErrorCode IceModel::write_timeseries() {
   // return if did not yet reach the time we need to save at
   if (ts_times[current_ts] > grid.time->current())
     return 0;
-  
+
   for (set<string>::iterator j = ts_vars.begin(); j != ts_vars.end(); ++j) {
     PISMTSDiagnostic *diag = ts_diagnostics[*j];
 
@@ -293,7 +293,7 @@ PetscErrorCode IceModel::init_extras() {
   }
 
   if (extra_vars.size() == 0) {
-    ierr = verbPrintf(2, grid.com, 
+    ierr = verbPrintf(2, grid.com,
        "PISM WARNING: no variables list after -extra_vars ... writing empty file ...\n"); CHKERRQ(ierr);
   }
 
@@ -343,28 +343,28 @@ PetscErrorCode IceModel::write_extras() {
     return 0;
   }
 
-  if (current_extra == 0) {
-    // The first time defines the left end-point of the first reporting
-    // interval; we don't write a report at this time, but we still need to
-    // store cumulative quantities that may be needed to compute rates of
-    // change.
+  //if (current_extra == 0) {
+    //// The first time defines the left end-point of the first reporting
+    //// interval; we don't write a report at this time, but we still need to
+    //// store cumulative quantities that may be needed to compute rates of
+    //// change.
 
-    set<string>::iterator j = extra_vars.begin();
-    while(j != extra_vars.end()) {
-      PISMDiagnostic *diag = diagnostics[*j];
+    //set<string>::iterator j = extra_vars.begin();
+    //while(j != extra_vars.end()) {
+      //PISMDiagnostic *diag = diagnostics[*j];
 
-      if (diag != NULL) {
-        ierr = diag->update_cumulative(); CHKERRQ(ierr);
-      }
-      ++j;
-    }
+      //if (diag != NULL) {
+        //ierr = diag->update_cumulative(); CHKERRQ(ierr);
+      //}
+      //++j;
+    //}
 
-    // This line re-initializes last_extra (the correct value is not known at
-    // the time init_extras() is calles).
-    last_extra = grid.time->current();
+    //// This line re-initializes last_extra (the correct value is not known at
+    //// the time init_extras() is calles).
+    //last_extra = grid.time->current();
 
-    return 0;
-  }
+    //return 0;
+  //}
 
   if (saving_after < grid.time->start()) {
     // Suppose a user tells PISM to write data at times 0:1000:10000. Suppose
@@ -388,7 +388,7 @@ PetscErrorCode IceModel::write_extras() {
     strncpy(filename, extra_filename.c_str(), PETSC_MAX_PATH_LEN);
   }
 
-  ierr = verbPrintf(3, grid.com, 
+  ierr = verbPrintf(3, grid.com,
                     "\nsaving spatial time-series to %s at %s\n\n",
                     filename, grid.time->date().c_str());
   CHKERRQ(ierr);
@@ -418,7 +418,7 @@ PetscErrorCode IceModel::write_extras() {
                            "bounds", "time_bounds"); CHKERRQ(ierr);
     ierr = nc.close(); CHKERRQ(ierr);
 
-    ierr = write_metadata(filename); CHKERRQ(ierr); 
+    ierr = write_metadata(filename); CHKERRQ(ierr);
 
     extra_file_is_ready = true;
 

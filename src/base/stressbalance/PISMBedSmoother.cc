@@ -455,7 +455,7 @@ PetscErrorCode PISMBedSmoother::get_theta(
         if (mytheta[i][j] > 1.0)  mytheta[i][j] = 1.0;
         if (mytheta[i][j] < 0.0)  mytheta[i][j] = 0.0;
       } else {
-        mytheta[i][j] = 0.00;  // FIXME = min_theta; make configurable
+        mytheta[i][j] = 0.05;  // FIXME = min_theta; make configurable
       }
     }
   }  

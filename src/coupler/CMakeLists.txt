@@ -5,6 +5,7 @@ add_library (pismboundary
   ./atmosphere/PAConstantPIK.cc
   ./atmosphere/PAEismintGreenland.cc
   ./atmosphere/PASeariseGreenland.cc
+  ./atmosphere/PATemperaturePIK.cc
   ./atmosphere/PAYearlyCycle.cc
   ./atmosphere/PACosineYearlyCycle.cc
   ./atmosphere/PAGivenClimate.cc

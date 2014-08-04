@@ -33,6 +33,7 @@
 #include "PAGivenClimate.hh"
 #include "PALapseRates.hh"
 #include "PASeariseGreenland.hh"
+#include "PATemperaturePIK.hh" //NOTE included
 #include "PA_delta_T.hh"
 #include "PA_delta_P.hh"
 #include "PAConstantPIK.hh"
@@ -74,6 +75,11 @@ static void create_pa_searise_greenland(IceGrid& g, const NCConfigVariable& conf
   result = new PA_SeaRISE_Greenland(g, conf);
 }
 
+//NOTE included
+static void create_pa_temperature_pik(IceGrid& g, const NCConfigVariable& conf, PISMAtmosphereModel* &result) {
+  result = new PATemperaturePIK(g, conf);
+}
+
 static void create_pa_eismint_greenland(IceGrid& g, const NCConfigVariable& conf,
 					PISMAtmosphereModel* &result) {
   result = new PA_EISMINT_Greenland(g, conf);
@@ -109,6 +115,7 @@ void PAFactory::add_standard_types() {
   add_model("searise_greenland", &create_pa_searise_greenland);
   add_model("eismint_greenland", &create_pa_eismint_greenland);
   add_model("pik",               &create_pa_constant_pik);
+  add_model("pik_temp", 	 &create_pa_temperature_pik); //NOTE included
   add_model("yearly_cycle",      &create_pa_yearly_cycle);
   set_default("given");
 

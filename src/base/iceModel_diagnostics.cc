@@ -79,6 +79,10 @@ PetscErrorCode IceModel::init_diagnostics() {
 
   ts_diagnostics["surface_ice_flux"]   = new IceModel_surface_flux(this, grid, variables);
   ts_diagnostics["cumulative_surface_ice_flux"]   = new IceModel_cumulative_surface_flux(this, grid, variables);
+  ts_diagnostics["surface_ice_flux_sheet"]   = new IceModel_surface_flux_sheet(this, grid, variables);
+  ts_diagnostics["cumulative_surface_ice_flux_sheet"]   = new IceModel_cumulative_surface_flux_sheet(this, grid, variables);
+  ts_diagnostics["surface_ice_flux_shelf"]   = new IceModel_surface_flux_shelf(this, grid, variables);
+  ts_diagnostics["cumulative_surface_ice_flux_shelf"]   = new IceModel_cumulative_surface_flux_shelf(this, grid, variables);
   ts_diagnostics["grounded_basal_ice_flux"]     = new IceModel_grounded_basal_flux(this, grid, variables);
   ts_diagnostics["cumulative_grounded_basal_ice_flux"]     = new IceModel_cumulative_grounded_basal_flux(this, grid, variables);
   ts_diagnostics["sub_shelf_ice_flux"] = new IceModel_sub_shelf_flux(this, grid, variables);
@@ -1531,6 +1535,101 @@ PetscErrorCode IceModel_cumulative_surface_flux::update(PetscReal a, PetscReal b
 
   return 0;
 }
+
+// NEW:
+IceModel_surface_flux_sheet::IceModel_surface_flux_sheet(IceModel *m, IceGrid &g, PISMVars &my_vars)
+  : PISMTSDiag<IceModel>(m, g, my_vars) {
+
+  // set metadata:
+  ts = new DiagnosticTimeseries(&grid, "surface_ice_flux_sheet", time_dimension_name);
+
+  ts->set_units("kg s-1", "");
+  ts->set_dimension_units(time_units, "");
+  ts->set_attr("long_name", "total over ice domain of top grounded surface ice mass flux");
+  ts->rate_of_change = true;
+}
+
+PetscErrorCode IceModel_surface_flux_sheet::update(PetscReal a, PetscReal b) {
+  PetscErrorCode ierr;
+  PetscReal value;
+
+  value = model->cumulative_surface_ice_flux_sheet;
+
+  ierr = ts->append(value, a, b); CHKERRQ(ierr);
+
+  return 0;
+}
+
+IceModel_cumulative_surface_flux_sheet::IceModel_cumulative_surface_flux_sheet(IceModel *m, IceGrid &g, PISMVars &my_vars)
+  : PISMTSDiag<IceModel>(m, g, my_vars) {
+
+  // set metadata:
+  ts = new DiagnosticTimeseries(&grid, "cumulative_surface_ice_flux_sheet", time_dimension_name);
+
+  ts->set_units("kg", "");
+  ts->set_dimension_units(time_units, "");
+  ts->set_attr("long_name", "cumulative total over ice domain of top grounded surface ice mass flux");
+}
+
+PetscErrorCode IceModel_cumulative_surface_flux_sheet::update(PetscReal a, PetscReal b) {
+  PetscErrorCode ierr;
+  PetscReal value;
+
+  value = model->cumulative_surface_ice_flux_sheet;
+
+  ierr = ts->append(value, a, b); CHKERRQ(ierr);
+
+  return 0;
+}
+
+
+IceModel_surface_flux_shelf::IceModel_surface_flux_shelf(IceModel *m, IceGrid &g, PISMVars &my_vars)
+  : PISMTSDiag<IceModel>(m, g, my_vars) {
+
+  // set metadata:
+  ts = new DiagnosticTimeseries(&grid, "surface_ice_flux_shelf", time_dimension_name);
+
+  ts->set_units("kg s-1", "");
+  ts->set_dimension_units(time_units, "");
+  ts->set_attr("long_name", "total over ice domain of top floating surface ice mass flux");
+  ts->rate_of_change = true;
+}
+
+PetscErrorCode IceModel_surface_flux_shelf::update(PetscReal a, PetscReal b) {
+  PetscErrorCode ierr;
+  PetscReal value;
+
+  value = model->cumulative_surface_ice_flux_shelf;
+
+  ierr = ts->append(value, a, b); CHKERRQ(ierr);
+
+  return 0;
+}
+
+IceModel_cumulative_surface_flux_shelf::IceModel_cumulative_surface_flux_shelf(IceModel *m, IceGrid &g, PISMVars &my_vars)
+  : PISMTSDiag<IceModel>(m, g, my_vars) {
+
+  // set metadata:
+  ts = new DiagnosticTimeseries(&grid, "cumulative_surface_ice_flux_shelf", time_dimension_name);
+
+  ts->set_units("kg", "");
+  ts->set_dimension_units(time_units, "");
+  ts->set_attr("long_name", "cumulative total over ice domain of top floating surface ice mass flux");
+}
+
+PetscErrorCode IceModel_cumulative_surface_flux_shelf::update(PetscReal a, PetscReal b) {
+  PetscErrorCode ierr;
+  PetscReal value;
+
+  value = model->cumulative_surface_ice_flux_shelf;
+
+  ierr = ts->append(value, a, b); CHKERRQ(ierr);
+
+  return 0;
+}
+// END NEW
+
+
 
 IceModel_grounded_basal_flux::IceModel_grounded_basal_flux(IceModel *m, IceGrid &g, PISMVars &my_vars)
   : PISMTSDiag<IceModel>(m, g, my_vars) {

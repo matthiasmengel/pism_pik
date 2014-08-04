@@ -490,6 +490,8 @@ PetscErrorCode IceModel::massContExplicitStep() {
     proc_sum_divQ_SIA = 0,
     proc_sum_divQ_SSA = 0,
     proc_surface_ice_flux = 0,
+    proc_surface_ice_flux_sheet = 0,
+    proc_surface_ice_flux_shelf = 0,
     // totals over all processors:
     total_H_to_Href_flux = 0,
     total_Href_to_H_flux = 0,
@@ -500,7 +502,9 @@ PetscErrorCode IceModel::massContExplicitStep() {
     total_sub_shelf_ice_flux = 0,
     total_sum_divQ_SIA = 0,
     total_sum_divQ_SSA = 0,
-    total_surface_ice_flux = 0;
+    total_surface_ice_flux = 0,
+    total_surface_ice_flux_sheet = 0,
+    total_surface_ice_flux_shelf = 0;
 
   const PetscScalar dx = grid.dx, dy = grid.dy;
   bool do_ocean_kill = config.get_flag("ocean_kill"),
@@ -579,6 +583,8 @@ PetscErrorCode IceModel::massContExplicitStep() {
       // Source terms:
       double
         surface_mass_balance = acab(i, j),
+        surface_mass_balance_sheet = 0.0,
+        surface_mass_balance_shelf = 0.0,
         meltrate_grounded = 0.0,
         meltrate_floating = 0.0,
         H_to_Href_flux    = 0.0,
@@ -590,6 +596,26 @@ PetscErrorCode IceModel::massContExplicitStep() {
       if (include_bmr_in_continuity) {
         meltrate_floating = shelfbmassflux(i, j);
         meltrate_grounded = vbmr(i, j);
+      }
+
+      if (mask.grounded_ice(i, j)){
+	if (acab(i, j) < 0.0 && (fabs(acab(i, j)) > (vH(i, j) / dt))){ // i.e. if there is more ice melted than available, report only the available ice as surface mass balance change
+	  surface_mass_balance_sheet = vH(i, j) / dt;
+	} else {  
+	  surface_mass_balance_sheet = acab(i, j);
+	}
+      } else {
+	surface_mass_balance_sheet = 0.0;
+      }
+
+      if (mask.floating_ice(i, j)){
+	if (acab(i, j) < 0.0 && (fabs(acab(i, j)) > (vH(i, j) / dt))){ // i.e. if there is more ice melted than available, report only the available ice as surface mass balance change
+	  surface_mass_balance_shelf = vH(i, j) / dt;
+	} else {  
+	  surface_mass_balance_shelf = acab(i, j);
+	}
+      } else {
+	surface_mass_balance_shelf = 0.0;
       }
 
       planeStar<PetscScalar> Q, v;
@@ -733,6 +759,8 @@ PetscErrorCode IceModel::massContExplicitStep() {
         proc_grounded_basal_ice_flux -= meltrate_grounded;
         proc_sub_shelf_ice_flux      -= meltrate_floating;
         proc_surface_ice_flux        += surface_mass_balance;
+        proc_surface_ice_flux_sheet        += surface_mass_balance_sheet;
+        proc_surface_ice_flux_shelf        += surface_mass_balance_shelf;
         proc_float_kill_flux         += float_kill_flux;
         proc_ocean_kill_flux         += ocean_kill_flux;
         proc_nonneg_rule_flux        += nonneg_rule_flux;
@@ -786,6 +814,8 @@ PetscErrorCode IceModel::massContExplicitStep() {
     ierr = PISMGlobalSum(&proc_ocean_kill_flux,    &total_ocean_kill_flux,    grid.com); CHKERRQ(ierr);
     ierr = PISMGlobalSum(&proc_sub_shelf_ice_flux, &total_sub_shelf_ice_flux, grid.com); CHKERRQ(ierr);
     ierr = PISMGlobalSum(&proc_surface_ice_flux,   &total_surface_ice_flux,   grid.com); CHKERRQ(ierr);
+    ierr = PISMGlobalSum(&proc_surface_ice_flux_sheet,   &total_surface_ice_flux_sheet,   grid.com); CHKERRQ(ierr);
+    ierr = PISMGlobalSum(&proc_surface_ice_flux_shelf,   &total_surface_ice_flux_shelf,   grid.com); CHKERRQ(ierr);
     ierr = PISMGlobalSum(&proc_sum_divQ_SIA,       &total_sum_divQ_SIA,       grid.com); CHKERRQ(ierr);
     ierr = PISMGlobalSum(&proc_sum_divQ_SSA,       &total_sum_divQ_SSA,       grid.com); CHKERRQ(ierr);
     ierr = PISMGlobalSum(&proc_Href_to_H_flux,     &total_Href_to_H_flux,     grid.com); CHKERRQ(ierr);
@@ -796,6 +826,8 @@ PetscErrorCode IceModel::massContExplicitStep() {
     cumulative_grounded_basal_ice_flux += total_grounded_basal_ice_flux * factor * dt;
     cumulative_sub_shelf_ice_flux += total_sub_shelf_ice_flux * factor * dt;
     cumulative_surface_ice_flux   += total_surface_ice_flux   * factor * dt;
+    cumulative_surface_ice_flux_sheet   += total_surface_ice_flux_sheet   * factor * dt;
+    cumulative_surface_ice_flux_shelf   += total_surface_ice_flux_shelf   * factor * dt;
     cumulative_sum_divQ_SIA       += total_sum_divQ_SIA       * factor * dt;
     cumulative_sum_divQ_SSA       += total_sum_divQ_SSA       * factor * dt;
     // these are computed using ice thickness and are "cumulative" already

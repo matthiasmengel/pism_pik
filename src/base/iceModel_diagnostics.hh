@@ -318,6 +318,38 @@ public:
   virtual PetscErrorCode update(PetscReal a, PetscReal b);
 };
 
+//! \brief Reports the total surface ice flux for the sheet.
+class IceModel_surface_flux_sheet : public PISMTSDiag<IceModel>
+{
+public:
+  IceModel_surface_flux_sheet(IceModel *m, IceGrid &g, PISMVars &my_vars);
+  virtual PetscErrorCode update(PetscReal a, PetscReal b);
+};
+
+//! \brief Reports the cumulative total surface ice flux for the sheet.
+class IceModel_cumulative_surface_flux_sheet : public PISMTSDiag<IceModel>
+{
+public:
+  IceModel_cumulative_surface_flux_sheet(IceModel *m, IceGrid &g, PISMVars &my_vars);
+  virtual PetscErrorCode update(PetscReal a, PetscReal b);
+};
+
+//! \brief Reports the total surface ice flux for the shelf.
+class IceModel_surface_flux_shelf : public PISMTSDiag<IceModel>
+{
+public:
+  IceModel_surface_flux_shelf(IceModel *m, IceGrid &g, PISMVars &my_vars);
+  virtual PetscErrorCode update(PetscReal a, PetscReal b);
+};
+
+//! \brief Reports the cumulative total surface ice flux for the shelf.
+class IceModel_cumulative_surface_flux_shelf : public PISMTSDiag<IceModel>
+{
+public:
+  IceModel_cumulative_surface_flux_shelf(IceModel *m, IceGrid &g, PISMVars &my_vars);
+  virtual PetscErrorCode update(PetscReal a, PetscReal b);
+};
+
 //! \brief Reports the total basal ice flux over the grounded region.
 class IceModel_grounded_basal_flux : public PISMTSDiag<IceModel>
 {

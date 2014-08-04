@@ -21,6 +21,7 @@
 
 #include "PGivenClimate.hh"
 #include "POModifier.hh"
+#include "Timeseries.hh"
 
 class POGivenTH : public PGivenClimate<POModifier,PISMOceanModel>
 {
@@ -31,6 +32,9 @@ public:
     temp_name       = "thetao";
     mass_flux_name  = "salinity"; //NOTE: salinity_name instead of mass_flux_name
     option_prefix   = "-ocean_th";
+ 
+    ocean_th_deltaT_set = false;
+    delta_T = NULL;
   }
 
   virtual ~POGivenTH() {}
@@ -62,6 +66,8 @@ public:
   virtual PetscErrorCode pttmpr(PetscReal salz, PetscReal temp_insitu, PetscReal pres,PetscReal rfpres, PetscReal &thetao);
   virtual PetscErrorCode potit(PetscReal salz,PetscReal thetao,PetscReal pres,PetscReal rfpres, PetscReal &temp_insitu_out);
   protected:
+    bool ocean_th_deltaT_set;
+    Timeseries *delta_T;
     IceModelVec2S *ice_thickness, *topg; // is not owned by this class
     IceModelVec2S temp_boundlayer, salinity_boundlayer;
 

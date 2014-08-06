@@ -32,7 +32,7 @@ public:
   PATemperaturePIK(IceGrid &g, const NCConfigVariable &conf)
     : PAYearlyCycle(g, conf)
   {
-    paleo_precipitation_correction = false;
+    precipitation_correction = false;
     delta_T = NULL;
   }
 
@@ -44,7 +44,8 @@ public:
   virtual PetscErrorCode update(PetscReal my_t, PetscReal my_dt);
   virtual PetscErrorCode mean_precipitation(IceModelVec2S &result);
 protected:
-  bool paleo_precipitation_correction;
+  bool precipitation_correction, precip_increase_per_degree_set, temp_huybrechts_dewolde99_set, temp_era_interim_set, temp_era_interim_sin_set;
+  PetscReal precip_increase_per_degree;
   Timeseries *delta_T;
   IceModelVec2S *ice_thickness;	//!< current ice thickness produced by IceModel.
   IceModelVec2S *lat, *usurf;

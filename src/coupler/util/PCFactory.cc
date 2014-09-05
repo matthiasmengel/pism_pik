@@ -48,6 +48,7 @@
 #include "PO_delta_SMB.hh"
 #include "POGivenTH.hh" //NOTE included
 #include "POGivenBMR.hh" //NOTE included
+#include "POoceanboxmodel.hh" //NOTE included
 
 // surface models:
 #include "PSAnomaly.hh"
@@ -154,6 +155,12 @@ static void create_po_delta_SMB(IceGrid& g, const NCConfigVariable& conf, PISMOc
   result = new PO_delta_SMB(g, conf, input);
 }
 
+//NOTE included
+static void create_po_oceanboxmodel(IceGrid& g, const NCConfigVariable& conf, PISMOceanModel* &result) {
+  result = new POoceanboxmodel(g, conf);
+}
+
+
 void POFactory::add_standard_types() {
   add_model("constant", &create_po_constant);
   add_model("given",    &create_po_given);
@@ -165,6 +172,7 @@ void POFactory::add_standard_types() {
   add_modifier("delta_SL",  &create_po_delta_SL);
   add_modifier("delta_T",   &create_po_delta_T);
   add_modifier("delta_SMB", &create_po_delta_SMB);
+  add_model("oceanboxmodel",      &create_po_oceanboxmodel); //NOTE: included
 }
 
 // Surface

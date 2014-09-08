@@ -35,17 +35,17 @@ PetscErrorCode POoceanboxmodel::init(PISMVars &vars) {
   
   // mask to idetify different basins
   ierr = SHELFmask.create(grid, "SHELFmask", true); CHKERRQ(ierr);
-  ierr = SHELFmask.set_attrs("model_state", "shelf mask", NULL, NULL); CHKERRQ(ierr);
+  ierr = SHELFmask.set_attrs("model_state", "shelf mask", "", ""); CHKERRQ(ierr);
 
   // mask to identify the ocean boxes
   ierr = BOXMODELmask.create(grid, "BOXMODELmask", true); CHKERRQ(ierr);
-  ierr = BOXMODELmask.set_attrs("model_state", "mask displaying ocean box model grid",NULL, NULL); CHKERRQ(ierr); 
+  ierr = BOXMODELmask.set_attrs("model_state", "mask displaying ocean box model grid","", ""); CHKERRQ(ierr); 
 
   // salinity
   ierr = Soc.create(grid, "Soc", true); CHKERRQ(ierr);
-  ierr = Soc.set_attrs("model_state", "ocean salinity field",NULL, "ocean salinity field"); CHKERRQ(ierr);  //NOTE unit=psu
+  ierr = Soc.set_attrs("model_state", "ocean salinity field","", "ocean salinity field"); CHKERRQ(ierr);  //NOTE unit=psu
   ierr = Soc_base.create(grid, "Soc_base", true); CHKERRQ(ierr);
-  ierr = Soc_base.set_attrs("model_state", "ocean base salinity field",NULL, "ocean base salinity field"); CHKERRQ(ierr);  //NOTE unit=psu
+  ierr = Soc_base.set_attrs("model_state", "ocean base salinity field","", "ocean base salinity field"); CHKERRQ(ierr);  //NOTE unit=psu
 
   // temperature
   ierr = Toc.create(grid, "Toc", true); CHKERRQ(ierr);
@@ -69,17 +69,17 @@ PetscErrorCode POoceanboxmodel::init(PISMVars &vars) {
 
   // heat flux
   ierr = heatflux.create(grid, "ocean heat flux", true); CHKERRQ(ierr); 
-  ierr = heatflux.set_attrs("climate_state", "ocean heat flux", "W/m^2", NULL); CHKERRQ(ierr);
+  ierr = heatflux.set_attrs("climate_state", "ocean heat flux", "W/m^2", ""); CHKERRQ(ierr);
 
   // basal melt rate
   ierr = basalmeltrate_shelf.create(grid, "basal melt rate from ocean box model", true); CHKERRQ(ierr); 
-  ierr = basalmeltrate_shelf.set_attrs("climate_state", "basal melt rate from ocean box model", "m/s", NULL); CHKERRQ(ierr);
+  ierr = basalmeltrate_shelf.set_attrs("climate_state", "basal melt rate from ocean box model", "m/s", ""); CHKERRQ(ierr);
 
 
   ice_thickness = dynamic_cast<IceModelVec2S*>(vars.get("land_ice_thickness"));
   if (!ice_thickness) { SETERRQ(grid.com, 1, "ERROR: ice thickness is not available"); }
 
-  topg = dynamic_cast<IceModelVec2S*>(vars.get("bedrock_topography"));
+  topg = dynamic_cast<IceModelVec2S*>(vars.get("bedrock_altitude"));
   if (topg == NULL) SETERRQ(grid.com, 1, "bedrock topography is not available");
 
   lat = dynamic_cast<IceModelVec2S*>(vars.get("latitude"));
@@ -175,9 +175,19 @@ PetscErrorCode POoceanboxmodel::AntarcticBasins() {
 	}else{
 	  SHELFmask(i,j) = shelf_unidentified;
 	}
+	
+	// // for PIGn and PIGs high-jack shelf_WeddellSea and shelf_AmundsenSea, respectively
+	// if (i <=51 && j >= 35 && j <= 42) {
+	//   SHELFmask(i,j) = shelf_WeddellSea;	
+	// }
+	// if (i > 51) {
+	//   SHELFmask(i,j) = shelf_AmundsenSea;
+	// }
+
       }else{ // if not floating
 	SHELFmask(i,j) = noshelf;
       }
+      SHELFmask(i,j) = shelf_AmundsenSea;
     } // end j
   } // end i
   

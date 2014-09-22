@@ -375,8 +375,12 @@ protected:
   virtual PetscErrorCode regrid_variables(string filename, set<string> regrid_vars, int ndims);
 
   // see iMpartgrid.cc
-  PetscReal get_average_thickness(bool do_redist, planeStar<int> M,
-                                  planeStar<PetscScalar> H);
+  double get_threshold_thickness(planeStar<int> Mask,
+                                    planeStar<double> thickness,
+                                    planeStar<double> surface_elevation,
+                                    double bed_elevation,
+                                    bool do_redist);
+
   virtual PetscErrorCode redistResiduals();
   virtual PetscErrorCode calculateRedistResiduals();
 

@@ -538,6 +538,8 @@ PetscErrorCode IceModel::massContExplicitStep() {
     do_redist = config.get_flag("part_redist");
   if (do_part_grid) {
     ierr = vHref.begin_access(); CHKERRQ(ierr);
+    ierr = vh.begin_access(); CHKERRQ(ierr);
+    ierr = vbed.begin_access(); CHKERRQ(ierr);
     if (do_redist) {
       ierr = vHresidual.begin_access(); CHKERRQ(ierr);
       // FIXME: next line causes mass loss if max_loopcount in redistResiduals()
@@ -614,7 +616,7 @@ PetscErrorCode IceModel::massContExplicitStep() {
       if (mask.ice_free_ocean(i, j)) {
         // Decide whether to apply Albrecht et al 2011 subgrid-scale
         // parameterization
-        if (do_part_grid && mask.next_to_floating_ice(i, j)) {
+        if (do_part_grid && mask.next_to_ice(i, j)) {
 
           // Add the flow contribution to this partially filled cell.
           H_to_Href_flux = -(divQ_SSA + divQ_SIA) * dt;
@@ -629,22 +631,27 @@ PetscErrorCode IceModel::massContExplicitStep() {
             vHref(i, j) = 0;
           }
 
-          PetscReal H_average = get_average_thickness(do_redist,
-                                                      vMask.int_star(i, j),
-                                                      vH.star(i, j)),
-            coverage_ratio = vHref(i, j) / H_average;
+          double H_threshold = get_threshold_thickness(vMask.int_star(i, j),
+                                                          vH.star(i, j),
+                                                          vh.star(i, j),
+                                                          vbed(i,j),
+                                                          do_redist);
+          double coverage_ratio = 1.0;
+          if (H_threshold > 0.0)
+            coverage_ratio = vHref(i, j) / H_threshold;
 
           if (coverage_ratio >= 1.0) {
             // A partially filled grid cell is now considered to be full.
             if (do_redist)
-              vHresidual(i, j) = vHref(i, j) - H_average; // residual ice thickness
+              vHresidual(i, j) = vHref(i, j) - H_threshold; // residual ice thickness
 
             vHref(i, j) = 0.0;
 
-            Href_to_H_flux = H_average;
+            Href_to_H_flux = H_threshold;
 
             // A cell that became "full" experiences both SMB and basal melt.
           } else {
+            // An empty of partially-filled cell experiences neither.
             surface_mass_balance = 0.0;
             meltrate_floating    = 0.0;
           }
@@ -653,8 +660,9 @@ PetscErrorCode IceModel::massContExplicitStep() {
           // directly contribute to ice thickness at this location.
           proc_sum_divQ_SIA += - divQ_SIA;
           proc_sum_divQ_SSA += - divQ_SSA;
-          divQ_SIA = divQ_SSA = 0;
-        }  else { // end of "if (part_grid...)
+          divQ_SIA           = 0.0;
+          divQ_SSA           = 0.0;
+        } else { // end of "if (part_grid...)
 
           // Standard ice-free ocean case:
           surface_mass_balance = 0.0;
@@ -751,6 +759,9 @@ PetscErrorCode IceModel::massContExplicitStep() {
 
   if (do_part_grid) {
     ierr = vHref.end_access(); CHKERRQ(ierr);
+    ierr = vh.end_access(); CHKERRQ(ierr);
+    ierr = vbed.end_access(); CHKERRQ(ierr);
+
     if (do_redist) {
       ierr = vHresidual.end_access(); CHKERRQ(ierr);
     }
@@ -827,4 +838,3 @@ PetscErrorCode IceModel::massContExplicitStep() {
 
   return 0;
 }
-

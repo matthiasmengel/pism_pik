@@ -1,10 +1,10 @@
-// Copyright (C) 2011, 2012 Torsten Albrecht and Ed Bueler and Constantine Khroulev
+// Copyright (C) 2011, 2012, 2013, 2014 PISM Authors
 //
 // This file is part of PISM.
 //
 // PISM is free software; you can redistribute it and/or modify it under the
 // terms of the GNU General Public License as published by the Free Software
-// Foundation; either version 2 of the License, or (at your option) any later
+// Foundation; either version 3 of the License, or (at your option) any later
 // version.
 //
 // PISM is distributed in the hope that it will be useful, but WITHOUT ANY
@@ -19,6 +19,7 @@
 #include <cmath>
 #include <cstring>
 #include <petscdmda.h>
+#include <assert.h>
 
 #include "iceModel.hh"
 #include "Mask.hh"
@@ -28,43 +29,87 @@
 
 //! \file iMpartgrid.cc Methods implementing PIK option -part_grid [\ref Albrechtetal2011].
 
-//! For ice-free (or partially-filled) cells adjacent to "full" floating cells, update Href.
-/*!
-  Should only be called if one of the neighbors is floating.
-
-  FIXME: does not account for grounded tributaries: thin ice shelves may
-  evolve from grounded tongue
-*/
-PetscReal IceModel::get_average_thickness(bool do_redist, planeStar<int> M, planeStar<PetscScalar> H) {
-
-  // get mean ice thickness over adjacent floating ice shelf neighbors
-  PetscReal H_average = 0.0;
-  PetscInt N = 0;
+//! @brief Compute threshold thickness used when deciding if a
+//! partially-filled cell should be considered 'full'.
+double IceModel::get_threshold_thickness(planeStar<int> M,
+                                            planeStar<double> H,
+                                            planeStar<double> h,
+                                            double bed_elevation,
+                                            bool reduce_frontal_thickness) {
+  // get mean ice thickness and surface elevation over adjacent
+  // icy cells
+  double
+    H_average   = 0.0,
+    h_average   = 0.0,
+    H_threshold = 0.0;
+  int N = 0;
   Mask m;
 
-  if (m.floating_ice(M.e)) { H_average += H.e; N++; }
-  if (m.floating_ice(M.w)) { H_average += H.w; N++; }
-  if (m.floating_ice(M.n)) { H_average += H.n; N++; }
-  if (m.floating_ice(M.s)) { H_average += H.s; N++; }
+  if (m.icy(M.e)) {
+    H_average += H.e;
+    h_average += h.e;
+    N++;
+  }
+
+  if (m.icy(M.w)) {
+    H_average += H.w;
+    h_average += h.w;
+    N++;
+  }
+
+  if (m.icy(M.n)) {
+    H_average += H.n;
+    h_average += h.n;
+    N++;
+  }
+
+  if (m.icy(M.s)) {
+    H_average += H.s;
+    h_average += h.s;
+    N++;
+  }
 
   if (N == 0) {
-    SETERRQ(grid.com, 1, "N == 0;  call this only if a neighbor is floating!\n");
+    // If there are no "icy" neighbors, return the threshold thickness
+    // of zero, forcing Href to be converted to H immediately.
+    return 0;
   }
 
   H_average = H_average / N;
+  h_average = h_average / N;
 
-  // reduces the guess at the front
-  if (do_redist) {
-    const PetscReal  mslope = 2.4511e-18*grid.dx / (300*600 / secpera);
-    // for declining front C / Q0 according to analytical flowline profile in
-    //   vandeveen with v0 = 300m / yr and H0 = 600m
-    H_average -= 0.8*mslope*pow(H_average, 5);
+  if (bed_elevation + H_average > h_average)
+    H_threshold = h_average - bed_elevation;
+  else {
+    H_threshold = H_average;
+    // reduces the guess at the front
+    if (reduce_frontal_thickness) {
+      // FIXME: Magic numbers without references to the literature are bad.
+      // for declining front C / Q0 according to analytical flowline profile in
+      //   vandeveen with v0 = 300m / yr and H0 = 600m
+      const double
+        H0 = 600.0,                   // 600 m
+        V0 = 300.0 / 3.15569259747e7, // 300 m/year (hard-wired for efficiency)
+        mslope = 2.4511e-18 * grid.dx / (H0 * V0);
+      H_threshold -= 0.8*mslope*pow(H_average, 5);
+    }
   }
 
-  return H_average;
+  // make sure that the returned threshold thickness is non-negative:
+  return std::max(H_threshold, 0.0);
 }
 
 
+//! Redistribute residual ice mass from subgrid-scale parameterization, when using -part_redist option.
+/*!
+  See [\ref Albrechtetal2011].  Manages the loop.
+
+  FIXME: Reporting!
+
+  FIXME: repeatRedist should be config flag?
+
+  FIXME: resolve fixed number (=3) of loops issue
+*/
 //! Redistribute residual ice mass from subgrid-scale parameterization, when using -part_redist option.
 /*!
   See [\ref Albrechtetal2011].  Manages the loop.
@@ -100,7 +145,7 @@ PetscErrorCode IceModel::calculateRedistResiduals() {
   ierr = vHresidual.copy_to(vHresidualnew); CHKERRQ(ierr);
 
   if (ocean == PETSC_NULL) { SETERRQ(grid.com, 1, "PISM ERROR: ocean == PETSC_NULL");  }
-  PetscReal sea_level = 0.0; //FIXME
+  PetscReal sea_level;
   ierr = ocean->sea_level_elevation(sea_level); CHKERRQ(ierr);
 
   PetscScalar minHRedist = 50.0; // to avoid the propagation of thin ice shelf tongues
@@ -115,7 +160,7 @@ PetscErrorCode IceModel::calculateRedistResiduals() {
     for (PetscInt j = grid.ys; j < grid.ys + grid.ym; ++j) {
       // first step: distributing residual ice masses
       if (vHresidual(i, j) > 0.0 && putOnTop==PETSC_FALSE) {
-        
+
         planeStar<PetscScalar> thk = vH.star(i, j),
           bed = vbed.star(i, j);
 
@@ -140,9 +185,9 @@ PetscErrorCode IceModel::calculateRedistResiduals() {
         } else {
           vHnew(i, j) += vHresidual(i, j); // mass conservation, but thick ice at one grid cell possible
           vHresidualnew(i, j) = 0.0;
-          ierr = verbPrintf(4, grid.com, 
+          ierr = verbPrintf(4, grid.com,
                             "!!! PISM WARNING: Hresidual has %d partially filled neighbors, "
-                            " set ice thickness to vHnew = %.2e at %d, %d \n", 
+                            " set ice thickness to vHnew = %.2e at %d, %d \n",
                             N, vHnew(i, j), i, j ); CHKERRQ(ierr);
         }
       }
@@ -193,9 +238,9 @@ PetscErrorCode IceModel::calculateRedistResiduals() {
           vHnew(i, j) += vHref(i, j); // mass conservation, but thick ice at one grid cell possible
           vHref(i, j) = 0.0;
           vHresidualnew(i, j) = 0.0;
-	      ierr = verbPrintf(4, grid.com, 
+        ierr = verbPrintf(4, grid.com,
                             "!!! PISM WARNING: Hresidual=%.2f with %d partially filled neighbors, "
-                            " set ice thickness to vHnew = %.2f at %d, %d \n", 
+                            " set ice thickness to vHnew = %.2f at %d, %d \n",
                             vHresidual(i, j), N , vHnew(i, j), i, j ); CHKERRQ(ierr);
         }
       }
@@ -207,7 +252,7 @@ PetscErrorCode IceModel::calculateRedistResiduals() {
   ierr = vbed.end_access(); CHKERRQ(ierr);
   ierr = vHresidual.end_access(); CHKERRQ(ierr);
   ierr = vHresidualnew.end_access(); CHKERRQ(ierr);
-  
+
   PetscScalar gHcut; //check, if redistribution should be run once more
   ierr = PISMGlobalSum(&Hcut, &gHcut, grid.com); CHKERRQ(ierr);
   putOnTop = PETSC_FALSE;

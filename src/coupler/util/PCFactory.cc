@@ -46,6 +46,7 @@
 #include "PO_delta_SL.hh"
 #include "PO_delta_T.hh"
 #include "PO_delta_SMB.hh"
+#include "POGivenBMR.hh" //NOTE included
 
 // surface models:
 #include "PSAnomaly.hh"
@@ -130,6 +131,11 @@ static void create_po_pik(IceGrid& g, const NCConfigVariable& conf, PISMOceanMod
   result = new POConstantPIK(g, conf);
 }
 
+//NOTE included
+static void create_po_bmr(IceGrid& g, const NCConfigVariable& conf, PISMOceanModel* &result) {
+  result = new POGivenBMR(g, conf);
+}
+
 static void create_po_delta_SL(IceGrid& g, const NCConfigVariable& conf, PISMOceanModel *input, POModifier* &result) {
   result = new PO_delta_SL(g, conf, input);
 }
@@ -146,6 +152,7 @@ void POFactory::add_standard_types() {
   add_model("constant", &create_po_constant);
   add_model("given",    &create_po_given);
   add_model("pik",      &create_po_pik);
+  add_model("bmr",      &create_po_bmr); //NOTE: included
   set_default("constant");
 
   add_modifier("delta_SL",  &create_po_delta_SL);

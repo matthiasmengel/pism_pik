@@ -345,6 +345,11 @@ PetscErrorCode IceModel::enthalpyAndDrainageStep(
   ierr = G0.begin_access(); CHKERRQ(ierr);
   ierr = vMask.begin_access(); CHKERRQ(ierr);
 
+  const bool sub_gl = config.get_flag("sub_groundingline");
+  if (sub_gl){
+    ierr = gl_mask.begin_access(); CHKERRQ(ierr);
+   }
+
   // these are accessed a column at a time
   ierr = u3->begin_access(); CHKERRQ(ierr);
   ierr = v3->begin_access(); CHKERRQ(ierr);
@@ -510,6 +515,9 @@ PetscErrorCode IceModel::enthalpyAndDrainageStep(
           ierr = esys->viewColumnInfoMFile(Enthnew, fMz); CHKERRQ(ierr);
         }
 
+	if (sub_gl)
+          vbmr(i,j) = (1.0 - gl_mask(i,j)) * shelfbmassflux(i,j) + gl_mask(i,j) * vbmr(i, j);
+
         // thermodynamic basal melt rate causes water to be added to layer
         PetscScalar bwatnew = vbwat(i,j);
         if (mask.grounded(i,j)) {
@@ -586,6 +594,10 @@ PetscErrorCode IceModel::enthalpyAndDrainageStep(
   ierr = G0.end_access(); CHKERRQ(ierr);
   ierr = vbmr.end_access(); CHKERRQ(ierr);
   ierr = liqfrac_surface.end_access(); CHKERRQ(ierr);
+
+  if (sub_gl){
+    ierr = gl_mask.end_access(); CHKERRQ(ierr);
+   }
 
   ierr = u3->end_access(); CHKERRQ(ierr);
   ierr = v3->end_access(); CHKERRQ(ierr);

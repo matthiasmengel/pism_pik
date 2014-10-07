@@ -27,22 +27,24 @@
 
 //! \brief A class implementing an ocean model.
 //! Computes the subshelf melt/refreezing rate based on a simple ocean box model by Olbers & Hellmer (2010).
-// class POoceanboxmodel : public PISMOceanModel {
-// public:
-//   POoceanboxmodel(IceGrid &g, const NCConfigVariable &conf);
-class POoceanboxmodel : public PGivenClimate<POModifier,PISMOceanModel>
-{
+//class POoceanboxmodel : public PISMOceanModel {
+//public:
+   //POoceanboxmodel(IceGrid &g, const NCConfigVariable &conf);
+   
+//class POoceanboxmodel : public PGivenClimate<POModifier,PISMOceanModel>
+//{
+class POoceanboxmodel : public PISMOceanModel {
 public:
-  POoceanboxmodel(IceGrid &g, const NCConfigVariable &conf)
-    : PGivenClimate<POModifier,PISMOceanModel>(g, conf, NULL)
-  {
-    temp_name       = "thetao";
-    mass_flux_name  = "salinity"; //NOTE: salinity_name instead of mass_flux_name
-    option_prefix   = "-ocean_boxmodel";
+  POoceanboxmodel(IceGrid &g, const NCConfigVariable &conf);
+  //  : PGivenClimate<POModifier,PISMOceanModel>(g, conf, NULL)
+  //{
+  //  temp_name       = "thetao";
+  //  mass_flux_name  = "salinity"; //NOTE: salinity_name instead of mass_flux_name
+  //  option_prefix   = "-oceanboxmodel"; // Ronja: changed from -ocean_boxmodel
 
-    obm_deltaT_set = false;
-    delta_T = NULL;
-  }
+//    obm_deltaT_set = false;
+//    delta_T = NULL;
+ // }
 
   virtual ~POoceanboxmodel() {}
 
@@ -57,27 +59,26 @@ public:
   virtual PetscErrorCode extentOfIceShelves();
   virtual PetscErrorCode identifyGroundingLineBox();
   virtual PetscErrorCode identifyIceFrontBox();
-  virtual PetscErrorCode oceanTemperature(); //FIXME needs to be called somewhere
-  virtual PetscErrorCode basalMeltRateForGroundingLineBox(); //FIXME needs to be called somewhere
-  virtual PetscErrorCode basalMeltRateForIceFrontBox(); //FIXME needs to be called somewhere
-  virtual PetscErrorCode basalMeltRateForOtherShelves(); //FIXME needs to be called somewhere
+  virtual PetscErrorCode oceanTemperature(); 
+  virtual PetscErrorCode basalMeltRateForGroundingLineBox(); 
+  virtual PetscErrorCode basalMeltRateForIceFrontBox(); 
+  virtual PetscErrorCode basalMeltRateForOtherShelves(); 
   
-  virtual PetscErrorCode shelf_base_temperature(IceModelVec2S &result);
-  virtual PetscErrorCode shelf_base_mass_flux(IceModelVec2S &result);
+   virtual PetscErrorCode shelf_base_temperature(IceModelVec2S &result);
+   virtual PetscErrorCode shelf_base_mass_flux(IceModelVec2S &result);
 
-//   virtual void add_vars_to_output(string keyword, map<string,NCSpatialVariable> &result);
-//   virtual PetscErrorCode define_variables(set<string> vars, const PIO &nc,
-//                                           PISM_IO_Type nctype);
-//   virtual PetscErrorCode write_variables(set<string> vars, string filename);
+   virtual void add_vars_to_output(string keyword, map<string,NCSpatialVariable> &result);
+   virtual PetscErrorCode define_variables(set<string> vars, const PIO &nc,
+                                          PISM_IO_Type nctype);
+   virtual PetscErrorCode write_variables(set<string> vars, string filename);
 
 protected:
-  bool obm_deltaT_set;
-  Timeseries *delta_T;
-
   IceModelVec2S *ice_thickness, *topg, *lat, *lon;	// not owned by this class
   IceModelVec2S SHELFmask, BOXMODELmask, Soc, Soc_base, Toc, Toc_base, Toc_inCelsius, T_star, Toc_anomaly, overturning, heatflux, basalmeltrate_shelf;
-//   NCSpatialVariable shelfbmassflux, shelfbtemp;
-
+  NCSpatialVariable shelfbmassflux, shelfbtemp;
+  bool obm_deltaT_set;
+  Timeseries *delta_T;
+  
   bool firstOceanBoxModelStep;
 //   static const int basin_RossSea, basin_WeddellSea, basin_EastAntarctica, basin_AmundsenSea, box_near_GL; 
   static const int shelf_unidentified, noshelf, shelf_RossSea, shelf_WeddellSea, shelf_EastAntarctica, shelf_AmundsenSea;

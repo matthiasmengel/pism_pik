@@ -145,7 +145,7 @@ const int POoceanboxmodel::shelf_EastAntarctica = 3.0;
 const int POoceanboxmodel::shelf_AmundsenSea = 4.0;
 
 const int POoceanboxmodel::box_unidentified = -99.0;     // This should never show up in the .nc-files.
-// const int POoceanboxmodel::box_near_GL = -1.0; // This should never show up in the .nc-files.
+const int POoceanboxmodel::box_near_GL = -1.0; // This should never show up in the .nc-files.
 const int POoceanboxmodel::box_noshelf = 0.0;   
 const int POoceanboxmodel::box_GL = 1.0;  // ocean box covering the grounding line region
 const int POoceanboxmodel::box_IF = 2.0;  // ocean box covering the rest of the ice shelf
@@ -262,7 +262,7 @@ PetscErrorCode POoceanboxmodel::AntarcticBasins() {
 
   ierr = extentOfIceShelves(); CHKERRQ(ierr);
   ierr = identifyGroundingLineBox(); CHKERRQ(ierr);
-  ierr = identifyIceFrontBox(); CHKERRQ(ierr);
+//  ierr = identifyIceFrontBox(); CHKERRQ(ierr);
 
   return 0;
 }
@@ -302,6 +302,7 @@ PetscErrorCode POoceanboxmodel::extentOfIceShelves() {
       bool grounded_E=false; bool grounded_W=false;   
 
       if (herefloating){ 
+	  //BOXMODELmask(i,j) = box_unidentified;   
 	  // Count cells for specific shelves
 	  if (SHELFmask(i,j) == shelf_RossSea)        lcounterRoss++;
 	  if (SHELFmask(i,j) == shelf_WeddellSea)     lcounterWeddell++;
@@ -329,12 +330,14 @@ PetscErrorCode POoceanboxmodel::extentOfIceShelves() {
 		BOXMODELmask(i,j) = box_GL;
 
 	  }else{ // i.e., all other floating boxes
+		//ierr = verbPrintf(2, grid.com, "setting box model mask to box_unidentified \n"); CHKERRQ(ierr);
 	    BOXMODELmask(i,j) = box_unidentified;     
 	  }  
 
 	}else{ // i.e., not floating
 	  BOXMODELmask(i,j) = box_noshelf;     
 	}
+	//if (BOXMODELmask(i,j)== box_GL){ ierr = verbPrintf(2, grid.com, "BOXMODELmask of i=%d, j=%d is %e \n", i, j, BOXMODELmask(i,j)); CHKERRQ(ierr); }
     }
   }
 
@@ -349,20 +352,22 @@ PetscErrorCode POoceanboxmodel::extentOfIceShelves() {
   ierr = PISMGlobalSum(&lcounterAmundsen, &counterAmundsen, grid.com); CHKERRQ(ierr);
   
   // This gives the initial area in terms of number of boxes
-  if (firstOceanBoxModelStep){
+  // FIXME the counterXXX_init is 0, so k_XXX is infinity, at the moment this is not used,
+  // TOD find a new routine to set the amount of iterations for the groundling line box definition
+  //if (firstOceanBoxModelStep==true){
     counterRoss_init=counterRoss;
     counterWeddell_init=counterWeddell;
     counterEastAntarctica_init=counterEastAntarctica;
     counterAmundsen_init=counterAmundsen;
-  }
+  //}
   
   // The extent of the GL- and CF boxes depends on these parameters:  // FIXME config!
-  k_Ross=ceil((counterRoss/counterRoss_init) * 0.4 * 0.33 * RossLengthInitial);
-  k_Weddell=ceil((counterWeddell/counterWeddell_init) * 0.2 * 0.33 * WeddellLengthInitial);
-  k_EastAntarctica=ceil((counterEastAntarctica/counterEastAntarctica_init) * 0.2 * 0.33 * EastAntarcticaLengthInitial);
-  k_Amundsen=ceil((counterAmundsen/counterAmundsen_init) * 0.1 * 0.33 * AmundsenLengthInitial);  
+  k_Ross=2;//ceil((counterRoss/counterRoss_init) * 0.4 * 0.33 * RossLengthInitial);
+  k_Weddell=2;//ceil((counterWeddell/counterWeddell_init) * 0.2 * 0.33 * WeddellLengthInitial);
+  k_EastAntarctica=2;//ceil((counterEastAntarctica/counterEastAntarctica_init) * 0.2 * 0.33 * EastAntarcticaLengthInitial);
+  k_Amundsen=2;//ceil((counterAmundsen/counterAmundsen_init) * 0.1 * 0.33 * AmundsenLengthInitial);  
   
-  firstOceanBoxModelStep = false;
+  //firstOceanBoxModelStep = false;
   return 0;
 }
 
@@ -370,8 +375,7 @@ PetscErrorCode POoceanboxmodel::extentOfIceShelves() {
 //! Identify all cells which belong to the grounding line box
 PetscErrorCode POoceanboxmodel::identifyGroundingLineBox() {
   PetscErrorCode ierr;  
-  ierr = verbPrintf(2, grid.com,
-                    "NOW in identifying gl box rountine\n"); CHKERRQ(ierr);
+  ierr = verbPrintf(2, grid.com,"NOW in identifying gl box rountine\n"); CHKERRQ(ierr);
   bool done=false;
   PetscScalar kcounter=0.0;
   
@@ -387,28 +391,28 @@ PetscErrorCode POoceanboxmodel::identifyGroundingLineBox() {
 	if (kcounter < k_Ross && SHELFmask(i,j) == shelf_RossSea){ // this implies that i,j is floating
 	  if (BOXMODELmask(i,j) == box_unidentified &&
 	    (BOXMODELmask(i-1,j) == box_GL || BOXMODELmask(i,j-1) == box_GL || BOXMODELmask(i,j+1) == box_GL || BOXMODELmask(i+1,j) == box_GL)){
-		BOXMODELmask(i,j) = box_GL;
+		BOXMODELmask(i,j) = box_near_GL;
 		done = false;
 	  }
 	}
 	if (kcounter < k_Weddell && SHELFmask(i,j) == shelf_WeddellSea){ // this implies that i,j is floating
 	  if (BOXMODELmask(i,j) == box_unidentified &&
 	    (BOXMODELmask(i-1,j) == box_GL || BOXMODELmask(i,j-1) == box_GL || BOXMODELmask(i,j+1) == box_GL || BOXMODELmask(i+1,j) == box_GL)){
-		BOXMODELmask(i,j) = box_GL;
+		BOXMODELmask(i,j) = box_near_GL;
 		done = false;
 	  }
 	}
 	if (kcounter < k_EastAntarctica && SHELFmask(i,j) == shelf_EastAntarctica){ // this implies that i,j is floating
 	  if (BOXMODELmask(i,j) == box_unidentified &&
 	    (BOXMODELmask(i-1,j) == box_GL || BOXMODELmask(i,j-1) == box_GL || BOXMODELmask(i,j+1) == box_GL || BOXMODELmask(i+1,j) == box_GL)){
-		BOXMODELmask(i,j) = box_GL;
+		BOXMODELmask(i,j) = box_near_GL;
 		done = false;
 	  }
 	}
 	if (kcounter < k_Amundsen && SHELFmask(i,j) == shelf_AmundsenSea){ // this implies that i,j is floating
 	  if (BOXMODELmask(i,j) == box_unidentified &&
 	    (BOXMODELmask(i-1,j) == box_GL || BOXMODELmask(i,j-1) == box_GL || BOXMODELmask(i,j+1) == box_GL || BOXMODELmask(i+1,j) == box_GL)){
-		BOXMODELmask(i,j) = box_GL;
+		BOXMODELmask(i,j) = box_near_GL;
 		done = false;
 	  }
 	}	
@@ -420,7 +424,19 @@ PetscErrorCode POoceanboxmodel::identifyGroundingLineBox() {
     ierr = BOXMODELmask.end_access(); CHKERRQ(ierr); 
     ierr = BOXMODELmask.beginGhostComm(); CHKERRQ(ierr);
     ierr = BOXMODELmask.endGhostComm(); CHKERRQ(ierr);
-
+    
+    ierr = BOXMODELmask.begin_access(); CHKERRQ(ierr);
+    for (PetscInt i=grid.xs; i<grid.xs+grid.xm; ++i) {
+      for (PetscInt j=grid.ys; j<grid.ys+grid.ym; ++j) {	
+	if (BOXMODELmask(i,j) == box_near_GL){ 
+	  BOXMODELmask(i,j) = box_GL;
+	}
+      }
+    }
+    ierr = BOXMODELmask.end_access(); CHKERRQ(ierr);
+    ierr = BOXMODELmask.beginGhostComm(); CHKERRQ(ierr);
+    ierr = BOXMODELmask.endGhostComm(); CHKERRQ(ierr);
+    
     // We're "done" only if we are done on *all* processor sub-domains:
     int flag = done;
     MPI_Allreduce(MPI_IN_PLACE, &flag, 1, MPI_INT, MPI_LAND, grid.com);

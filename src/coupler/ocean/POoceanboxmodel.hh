@@ -79,10 +79,10 @@ protected:
   bool obm_deltaT_set;
   Timeseries *delta_T;
   
-  bool firstOceanBoxModelStep;
+//  bool firstOceanBoxModelStep;
 //   static const int basin_RossSea, basin_WeddellSea, basin_EastAntarctica, basin_AmundsenSea, box_near_GL; 
   static const int shelf_unidentified, noshelf, shelf_RossSea, shelf_WeddellSea, shelf_EastAntarctica, shelf_AmundsenSea;
-  static const int box_unidentified, box_noshelf, box_GL, box_IF;
+  static const int box_unidentified, box_noshelf, box_GL, box_near_GL, box_IF;
   PetscScalar counterRoss, counterWeddell, counterEastAntarctica, counterAmundsen; // size of each shelf
   PetscScalar counterRoss_init, counterWeddell_init, counterEastAntarctica_init, counterAmundsen_init; // initial size of each shelf
   PetscScalar counterRoss_GLbox, counterWeddell_GLbox, counterEastAntarctica_GLbox, counterAmundsen_GLbox; // size of grounding line box

@@ -167,12 +167,12 @@ void POFactory::add_standard_types() {
   add_model("pik",      &create_po_pik);
   add_model("th",       &create_po_th); //NOTE: included
   add_model("bmr",      &create_po_bmr); //NOTE: included
+  add_model("oceanboxmodel",      &create_po_oceanboxmodel); //NOTE: included
   set_default("constant");
 
   add_modifier("delta_SL",  &create_po_delta_SL);
   add_modifier("delta_T",   &create_po_delta_T);
   add_modifier("delta_SMB", &create_po_delta_SMB);
-  add_model("oceanboxmodel",      &create_po_oceanboxmodel); //NOTE: included
 }
 
 // Surface

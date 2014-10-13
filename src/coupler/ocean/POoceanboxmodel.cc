@@ -390,24 +390,20 @@ PetscErrorCode POoceanboxmodel::identifyGroundingLineBox() {
       for (PetscInt j=grid.ys; j<grid.ys+grid.ym; ++j) { 
 	if (kcounter < k_Ross && SHELFmask(i,j) == shelf_RossSea){ // this implies that i,j is floating
 	  if (BOXMODELmask(i,j) == box_unidentified &&
-	  //TODO include diagonal neighbours?
-	  //  (BOXMODELmask(i-1,j) == box_GL || BOXMODELmask(i,j-1) == box_GL || BOXMODELmask(i,j+1) == box_GL || BOXMODELmask(i+1,j) == box_GL)){
-	     (BOXMODELmask(i-1,j) == box_GL || BOXMODELmask(i,j-1) == box_GL || BOXMODELmask(i,j+1) == box_GL || BOXMODELmask(i+1,j) == box_GL || BOXMODELmask(i+1,j+1) == box_GL ||  BOXMODELmask(i+1,j-1) == box_GL ||  BOXMODELmask(i-1,j+1) == box_GL || BOXMODELmask(i-1,j-1) == box_GL )){
+	    (BOXMODELmask(i-1,j) == box_GL || BOXMODELmask(i,j-1) == box_GL || BOXMODELmask(i,j+1) == box_GL || BOXMODELmask(i+1,j) == box_GL || BOXMODELmask(i+1,j+1) == box_GL ||  BOXMODELmask(i+1,j-1) == box_GL ||  BOXMODELmask(i-1,j+1) == box_GL || BOXMODELmask(i-1,j-1) == box_GL )){
 		BOXMODELmask(i,j) = box_near_GL;
 		done = false;
 	  }
 	}
 	if (kcounter < k_Weddell && SHELFmask(i,j) == shelf_WeddellSea){ // this implies that i,j is floating
 	  if (BOXMODELmask(i,j) == box_unidentified &&
-	   // (BOXMODELmask(i-1,j) == box_GL || BOXMODELmask(i,j-1) == box_GL || BOXMODELmask(i,j+1) == box_GL || BOXMODELmask(i+1,j) == box_GL)){
-	     (BOXMODELmask(i-1,j) == box_GL || BOXMODELmask(i,j-1) == box_GL || BOXMODELmask(i,j+1) == box_GL || BOXMODELmask(i+1,j) == box_GL || BOXMODELmask(i+1,j+1) == box_GL ||  BOXMODELmask(i+1,j-1) == box_GL ||  BOXMODELmask(i-1,j+1) == box_GL || BOXMODELmask(i-1,j-1) == box_GL )){
+	    (BOXMODELmask(i-1,j) == box_GL || BOXMODELmask(i,j-1) == box_GL || BOXMODELmask(i,j+1) == box_GL || BOXMODELmask(i+1,j) == box_GL || BOXMODELmask(i+1,j+1) == box_GL ||  BOXMODELmask(i+1,j-1) == box_GL ||  BOXMODELmask(i-1,j+1) == box_GL || BOXMODELmask(i-1,j-1) == box_GL )){
 		BOXMODELmask(i,j) = box_near_GL;
 		done = false;
 	  }
 	}
 	if (kcounter < k_EastAntarctica && SHELFmask(i,j) == shelf_EastAntarctica){ // this implies that i,j is floating
 	  if (BOXMODELmask(i,j) == box_unidentified &&
-	    //(BOXMODELmask(i-1,j) == box_GL || BOXMODELmask(i,j-1) == box_GL || BOXMODELmask(i,j+1) == box_GL || BOXMODELmask(i+1,j) == box_GL)){
       	    (BOXMODELmask(i-1,j) == box_GL || BOXMODELmask(i,j-1) == box_GL || BOXMODELmask(i,j+1) == box_GL || BOXMODELmask(i+1,j) == box_GL || BOXMODELmask(i+1,j+1) == box_GL ||  BOXMODELmask(i+1,j-1) == box_GL ||  BOXMODELmask(i-1,j+1) == box_GL || BOXMODELmask(i-1,j-1) == box_GL )){
 		BOXMODELmask(i,j) = box_near_GL;
 		done = false;
@@ -415,7 +411,6 @@ PetscErrorCode POoceanboxmodel::identifyGroundingLineBox() {
 	}
 	if (kcounter < k_Amundsen && SHELFmask(i,j) == shelf_AmundsenSea){ // this implies that i,j is floating
 	  if (BOXMODELmask(i,j) == box_unidentified &&
-	    //(BOXMODELmask(i-1,j) == box_GL || BOXMODELmask(i,j-1) == box_GL || BOXMODELmask(i,j+1) == box_GL || BOXMODELmask(i+1,j) == box_GL)){
 	    (BOXMODELmask(i-1,j) == box_GL || BOXMODELmask(i,j-1) == box_GL || BOXMODELmask(i,j+1) == box_GL || BOXMODELmask(i+1,j) == box_GL || BOXMODELmask(i+1,j+1) == box_GL ||  BOXMODELmask(i+1,j-1) == box_GL ||  BOXMODELmask(i-1,j+1) == box_GL || BOXMODELmask(i-1,j-1) == box_GL )){
 		BOXMODELmask(i,j) = box_near_GL;
 		done = false;

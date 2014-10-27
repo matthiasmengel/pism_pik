@@ -95,7 +95,7 @@ PetscErrorCode PISMMohrCoulombYieldStress::init(PISMVars &vars)
   PetscErrorCode ierr;
   PetscScalar pseudo_plastic_q = config.get("pseudo_plastic_q");
   bool topg_to_phi_set, plastic_phi_set, bootstrap, i_set,
-    tauc_to_phi_set;
+    tauc_to_phi_set, constant_phi_field;
   string filename;
   int start;
 
@@ -128,6 +128,8 @@ PetscErrorCode PISMMohrCoulombYieldStress::init(PISMVars &vars)
                             bootstrap); CHKERRQ(ierr);
     ierr = PISMOptionsIsSet("-tauc_to_phi", "Compute tillphi as a function of tauc and the rest of the model state",
                             tauc_to_phi_set); CHKERRQ(ierr);
+    ierr = PISMOptionsIsSet("-constant_phi", "constant phi file", constant_phi_field); CHKERRQ(ierr);
+
     bool scaleSet = false;
     double slidescale = 0.0;
     ierr = PISMOptionsReal("-sliding_scale",
@@ -150,7 +152,7 @@ PetscErrorCode PISMMohrCoulombYieldStress::init(PISMVars &vars)
   }
   ierr = PetscOptionsEnd(); CHKERRQ(ierr);
 
-  // Get the till friction angle from the the context and ignore options that
+  // Get the till friction angle from the context and ignore options that
   // would be used to set it otherwise.
   IceModelVec2S *till_phi_input = dynamic_cast<IceModelVec2S*>(vars.get("tillphi"));
   if (till_phi_input != NULL) {
@@ -164,8 +166,8 @@ PetscErrorCode PISMMohrCoulombYieldStress::init(PISMVars &vars)
     return 0;
   }
 
-  if (topg_to_phi_set && plastic_phi_set) {
-    PetscPrintf(grid.com, "ERROR: only one of -plastic_phi and -topg_to_phi is allowed.\n");
+  if ((topg_to_phi_set && plastic_phi_set) || (topg_to_phi_set && constant_phi_field) || (constant_phi_field && plastic_phi_set)) {
+    PetscPrintf(grid.com, "ERROR: only one of -plastic_phi, -topg_to_phi and -constant_phi is allowed.\n");
     PISMEnd();
   }
 
@@ -182,6 +184,25 @@ PetscErrorCode PISMMohrCoulombYieldStress::init(PISMVars &vars)
     // note option -topg_to_phi will be read again to get comma separated array of parameters
     ierr = topg_to_phi(); CHKERRQ(ierr);
 
+  } else if (constant_phi_field) {
+
+    ierr = verbPrintf(2, grid.com,
+                      "  option -constant_phi seen; getting tillphi map from file ...\n");
+    CHKERRQ(ierr);
+
+    string constant_phi_file;
+    bool flag;
+    ierr = PISMOptionsString("-constant_phi", "Specifies the file tillphi will be read from",
+                             constant_phi_file, flag, true); CHKERRQ(ierr);
+
+    if (constant_phi_file.empty() == false) {
+      // "-constant_phi filename.nc" is given
+      ierr = till_phi.regrid(constant_phi_file, true); CHKERRQ(ierr);
+    } else {
+          ierr = verbPrintf(2, grid.com,
+                      "  option -constant_phi set, but no tillphi map file ...\n");
+          CHKERRQ(ierr);
+    }
   } else if (i_set || bootstrap) {
 
     ierr = find_pism_input(filename, bootstrap, start); CHKERRQ(ierr);

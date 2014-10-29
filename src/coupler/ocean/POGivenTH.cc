@@ -216,12 +216,12 @@ PetscErrorCode POGivenTH::calculate_boundlayer_temp_and_salt() {
   for (PetscInt i=grid.xs; i<grid.xs+grid.xm; ++i) {
     for (PetscInt j=grid.ys; j<grid.ys+grid.ym; ++j) {
       const PetscScalar shelfbaseelev = -(rhoi/rhow) * (*ice_thickness)(i,j); // FIXME issue #15
-      PetscReal thetao;
+
       if ((delta_T != NULL) && ocean_th_deltaT_set) {
-        thetao    = temp(i,j) - 273.15 + (*delta_T)(t + 0.5 * dt); // to degC
-      }else{
-        thetao    = temp(i,j) - 273.15; // to degC
+	temp(i,j) = temp(i,j) + (*delta_T)(t + 0.5 * dt);
       }
+
+      PetscReal thetao    = temp(i,j) - 273.15; // to degC
       PetscReal sal_ocean = mass_flux(i,j); //NOTE salinity instead of mass_flux
       PetscReal press = rhow * -1. * shelfbaseelev/1000. + reference_pressure; //NOTE Unit??
       potit(sal_ocean, thetao, press, reference_pressure, temp_insitu);

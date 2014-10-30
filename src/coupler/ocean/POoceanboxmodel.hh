@@ -73,10 +73,10 @@ public:
    virtual PetscErrorCode write_variables(set<string> vars, string filename);
 
 protected:
-  IceModelVec2S *ice_thickness, *topg, *lat, *lon;	// not owned by this class
+  IceModelVec2S *ice_thickness, *topg, *lat, *lon, *basins;	// not owned by this class
   IceModelVec2S SHELFmask, BOXMODELmask, Soc, Soc_base, Toc, Toc_base, Toc_inCelsius, T_star, Toc_anomaly, overturning, heatflux, basalmeltrate_shelf;
   NCSpatialVariable shelfbmassflux, shelfbtemp;
-  bool obm_deltaT_set;
+  bool obm_deltaT_set, drainageBasins_set;
   Timeseries *delta_T;
   
 //  bool firstOceanBoxModelStep;

@@ -106,7 +106,12 @@ PetscErrorCode POoceanboxmodel::init(PISMVars &vars) {
   lon = dynamic_cast<IceModelVec2S*>(vars.get("longitude"));
   if (!lon) { SETERRQ(grid.com, 1, "ERROR: longitude is not available"); }
 
+  ierr = PISMOptionsIsSet("-drainageBasins", drainageBasins_set); CHKERRQ(ierr);
 
+  if (drainageBasins_set){
+    basins = dynamic_cast<IceModelVec2S*>(vars.get("drainage_basins"));
+    if (!basins) { SETERRQ(grid.com, 1, "ERROR: drainage basins is not available"); }
+  }
   ierr = PISMOptionsIsSet("-obm_deltaT", obm_deltaT_set); CHKERRQ(ierr);
 
   if (obm_deltaT_set) {
@@ -262,7 +267,7 @@ PetscErrorCode POoceanboxmodel::AntarcticBasins() {
 
   ierr = extentOfIceShelves(); CHKERRQ(ierr);
   ierr = identifyGroundingLineBox(); CHKERRQ(ierr);
-//  ierr = identifyIceFrontBox(); CHKERRQ(ierr);
+  ierr = identifyIceFrontBox(); CHKERRQ(ierr);
 
   return 0;
 }
@@ -623,6 +628,9 @@ PetscErrorCode POoceanboxmodel::basalMeltRateForGroundingLineBox() {
   PetscScalar lmean_meltrate_Ross_GLbox=0.0, lmean_meltrate_Weddell_GLbox=0.0, lmean_meltrate_EastAntarctica_GLbox=0.0, lmean_meltrate_Amundsen_GLbox=0.0;
   PetscScalar lmean_overturning_Ross_GLbox=0.0, lmean_overturning_Weddell_GLbox=0.0, lmean_overturning_EastAntarctica_GLbox=0.0, lmean_overturning_Amundsen_GLbox=0.0;
 
+  // TODO: numberOfDrainageBasins = 17 (header) ; fehlermeldung, wenn max(nc-basins) != numberOfDrainageBasins; abbrechen
+  // vektoren der länge 17 für mean salinity,...
+
   ierr = ice_thickness->begin_access(); CHKERRQ(ierr);
   ierr = SHELFmask.begin_access(); CHKERRQ(ierr);  
   ierr = BOXMODELmask.begin_access(); CHKERRQ(ierr); 
@@ -699,6 +707,8 @@ PetscErrorCode POoceanboxmodel::basalMeltRateForGroundingLineBox() {
 	  // which is the SAME since Soc_base, Toc_base and Toc_anomaly are the same FOR ALL i,j CONSIDERED, so this is just nomenclature!
 	  overturning(i,j) = C1*rho_star* (beta*(Soc_base(i,j)-Soc(i,j)) - alpha*((Toc_base(i,j)-273.15+Toc_anomaly(i,j))-Toc_inCelsius(i,j))); // in m^3/s
 
+
+	  // TODO loop über alle basins
 	  if (BOXMODELmask(i-1,j)==box_IF ||
 	    BOXMODELmask(i+1,j)==box_IF ||
 	    BOXMODELmask(i,j-1)==box_IF ||
@@ -1031,7 +1041,7 @@ PetscErrorCode POoceanboxmodel::shelf_base_temperature(IceModelVec2S &result) {
  */
 PetscErrorCode POoceanboxmodel::shelf_base_mass_flux(IceModelVec2S &result) {
   PetscErrorCode ierr = basalMeltRateForGroundingLineBox(); CHKERRQ(ierr);
-  ierr = basalMeltRateForIceFrontBox(); CHKERRQ(ierr);
+  ierr = basalMeltRateForIceFrontBox(); CHKERRQ(ierr); // TODO Diese Routinen woanders aufrufen (um Dopplung zu vermeiden)
   ierr = basalMeltRateForOtherShelves(); CHKERRQ(ierr);
   ierr = basalmeltrate_shelf.copy_to(result); CHKERRQ(ierr);
   ierr = verbPrintf(2, grid.com,

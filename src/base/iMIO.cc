@@ -404,6 +404,8 @@ PetscErrorCode IceModel::initFromFile(string filename) {
     }
   }
 
+
+
   // Find the index of the last record in the file:
   unsigned int last_record;
   ierr = nc.inq_nrecords(last_record); CHKERRQ(ierr); 
@@ -441,6 +443,23 @@ PetscErrorCode IceModel::initFromFile(string filename) {
                         "  Setting it to zero...\n",
                         filename.c_str()); CHKERRQ(ierr);
       ierr = tau3.set(0.0); CHKERRQ(ierr);
+    }
+  }
+
+
+  // check if the input file has basins; set its pism_intent to "diagnostic" and
+  // set the field itself to 0 if it is not present
+  if (config.get_flag("drainageBasins")) {
+    bool exists;
+    ierr = nc.inq_var("drainage_basins", exists); CHKERRQ(ierr);
+    ierr = vBasinMask.read(filename, last_record); CHKERRQ(ierr);
+    if (!exists) {
+      ierr = verbPrintf(2, grid.com,
+        "PISM WARNING: basins for -oceanboxmodel not found in '%s'. Setting it to zero...\n",
+                        filename.c_str()); CHKERRQ(ierr);
+
+      ierr = vBasinMask.set_attr("pism_intent", "diagnostic"); CHKERRQ(ierr);
+      ierr = vBasinMask.set(0.0); CHKERRQ(ierr);
     }
   }
 
@@ -485,6 +504,11 @@ PetscErrorCode IceModel::initFromFile(string filename) {
   // re-set Href's pism_intent attribute
   if (config.get_flag("part_grid")) {
     ierr = vHref.set_attr("pism_intent", "model_state"); CHKERRQ(ierr);
+  }
+
+  // re-set basins' pism_intent attribute
+  if (config.get_flag("drainageBasins")) {
+    ierr = vBasinMask.set_attr("pism_intent", "model_state"); CHKERRQ(ierr);
   }
 
   string history;

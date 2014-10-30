@@ -239,7 +239,7 @@ protected:
                          //!< grounded_ice, floating_ice, ice_free_ocean
     ocean_kill_mask,     //!< mask used by the -ocean_kill code 
     vIcebergMask, //!< mask for iceberg identification
-
+    vBasinMask, //! < mask for distinguishing drainage basins, used by -oceanboxmodel
     vBCMask; //!< mask to determine Dirichlet boundary locations
   IceModelVec2S gl_mask, //!< mask to determine grounding line position
     gl_mask_x, //!< mask to determine grounding line position in x-direction

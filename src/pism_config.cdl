@@ -67,6 +67,9 @@ netcdf pism_config {
     pism_config:kill_icebergs = "no";
     pism_config:kill_icebergs_doc = "identify and kill detached ice-shelf areas";
 
+    pism_config:drainageBasins = "no";
+    pism_config:drainageBasins_doc = "read drainage basins from Rignot et al., 2011";
+
     pism_config:do_eigen_calving = "false";
     pism_config:do_eigen_calving_doc = "calculate strain rates and related calving rate";
 
@@ -79,8 +82,8 @@ netcdf pism_config {
     pism_config:sub_groundingline  = "false";
     pism_config:sub_groundingline_doc = "interpolation scheme expanded to two dimensions is used if switched on in order to evaluate the position of the grounding line on a subgrid scale.";
 
-   pism_config:subgl_type = "LI";
-   pism_config:subgl_type_doc = "Different types of grounding line interpolation. LI - linear interpolation, PA - Pattyn-like interpolation";
+    pism_config:subgl_type = "LI";
+    pism_config:subgl_type_doc = "Different types of grounding line interpolation. LI - linear interpolation, PA - Pattyn-like interpolation";
 
 
 

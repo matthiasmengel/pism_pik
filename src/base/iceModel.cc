@@ -390,6 +390,15 @@ PetscErrorCode IceModel::createVecs() {
     }
   }
 
+  if (config.get_flag("drainageBasins") == true) {
+    // BasinMask
+    ierr = vBasinMask.create(grid, "basins", true); CHKERRQ(ierr);
+    ierr = vBasinMask.set_attrs("model_state", "drainage basins",
+		      "", "drainage_basins"); CHKERRQ(ierr);
+    ierr = variables.add(vBasinMask); CHKERRQ(ierr);
+  }
+
+
   if (config.get_flag("do_eigen_calving") == true) {
     ierr = vPrinStrain1.create(grid, "edot_1", true); CHKERRQ(ierr);
     ierr = vPrinStrain1.set_attrs("internal", 

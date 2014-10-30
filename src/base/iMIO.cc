@@ -408,7 +408,7 @@ PetscErrorCode IceModel::initFromFile(string filename) {
 
   // Find the index of the last record in the file:
   unsigned int last_record;
-  ierr = nc.inq_nrecords(last_record); CHKERRQ(ierr); 
+  ierr = nc.inq_nrecords(last_record); CHKERRQ(ierr);
   last_record -= 1;
 
   // Read the model state, mapping and climate_steady variables:
@@ -585,10 +585,10 @@ PetscErrorCode IceModel::initFromFile(string filename) {
     }
 
     if (dimensions == 0) {
-      ierr = regrid_variables(filename, vars, 2); CHKERRQ(ierr); 
-      ierr = regrid_variables(filename, vars, 3); CHKERRQ(ierr); 
+      ierr = regrid_variables(filename, vars, 2); CHKERRQ(ierr);
+      ierr = regrid_variables(filename, vars, 3); CHKERRQ(ierr);
     } else {
-      ierr = regrid_variables(filename, vars, dimensions); CHKERRQ(ierr); 
+      ierr = regrid_variables(filename, vars, dimensions); CHKERRQ(ierr);
     }
 
     return 0;

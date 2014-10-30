@@ -27,7 +27,7 @@
 #include "pism_options.hh"
 
 //! Read file and use heuristics to initialize PISM from typical 2d data available through remote sensing.
-/*! 
+/*!
 This procedure is called by the base class when option <tt>-boot_file</tt> is used.
 
 See chapter 4 of the User's Manual.  We read only 2D information from the bootstrap file.
@@ -42,7 +42,7 @@ PetscErrorCode IceModel::bootstrapFromFile(string filename) {
   ierr = regrid(2); CHKERRQ(ierr);
 
   // Check the consistency of geometry fields:
-  ierr = updateSurfaceElevationAndMask(); CHKERRQ(ierr); 
+  ierr = updateSurfaceElevationAndMask(); CHKERRQ(ierr);
 
   ierr = verbPrintf(2, grid.com,
 		    "getting surface B.C. from couplers...\n"); CHKERRQ(ierr);
@@ -92,12 +92,12 @@ PetscErrorCode IceModel::bootstrap_2d(string filename) {
   PIO nc(grid.com, grid.rank, "netcdf3");
   ierr = nc.open(filename, PISM_NOWRITE); CHKERRQ(ierr);
 
-  ierr = verbPrintf(2, grid.com, 
+  ierr = verbPrintf(2, grid.com,
 		    "bootstrapping by PISM default method from file %s\n", filename.c_str()); CHKERRQ(ierr);
 
   // report on resulting computational box, rescale grid, actually create a
   // local interpolation context
-  ierr = verbPrintf(2, grid.com, 
+  ierr = verbPrintf(2, grid.com,
                     "  rescaling computational box for ice from -boot_file file and\n"
                     "    user options to dimensions:\n"
                     "    [%6.2f km, %6.2f km] x [%6.2f km, %6.2f km] x [0 m, %6.2f m]\n",
@@ -105,7 +105,7 @@ PetscErrorCode IceModel::bootstrap_2d(string filename) {
                     (grid.x0 + grid.Lx)/1000.0,
                     (grid.y0 - grid.Ly)/1000.0,
                     (grid.y0 + grid.Ly)/1000.0,
-                    grid.Lz); 
+                    grid.Lz);
   CHKERRQ(ierr);
 
   string usurf_name;
@@ -124,16 +124,16 @@ PetscErrorCode IceModel::bootstrap_2d(string filename) {
   // setting to default values appropriately
 
   if (maskExists) {
-    ierr = verbPrintf(2, grid.com, 
+    ierr = verbPrintf(2, grid.com,
 		      "  WARNING: 'mask' found; IGNORING IT!\n"); CHKERRQ(ierr);
   }
   if (hExists) {
-    ierr = verbPrintf(2, grid.com, 
+    ierr = verbPrintf(2, grid.com,
 		      "  WARNING: surface elevation 'usurf' found; IGNORING IT!\n");
 		      CHKERRQ(ierr);
   }
 
-  ierr = verbPrintf(2, grid.com, 
+  ierr = verbPrintf(2, grid.com,
 		    "  reading 2D model state variables by regridding ...\n"); CHKERRQ(ierr);
 
   ierr = vLongitude.regrid(filename, false); CHKERRQ(ierr);
@@ -145,19 +145,25 @@ PetscErrorCode IceModel::bootstrap_2d(string filename) {
     ierr = vLatitude.set_attr("missing_at_bootstrap","true"); CHKERRQ(ierr);
   }
 
-  ierr =         vH.regrid(filename, 
+  ierr =         vH.regrid(filename,
                            config.get("bootstrapping_H_value_no_var")); CHKERRQ(ierr);
-  ierr =       vbed.regrid(filename,  
+  ierr =       vbed.regrid(filename,
                            config.get("bootstrapping_bed_value_no_var")); CHKERRQ(ierr);
-  ierr =      vbwat.regrid(filename,  
+  ierr =      vbwat.regrid(filename,
                            config.get("bootstrapping_bwat_value_no_var")); CHKERRQ(ierr);
-  ierr =       vbmr.regrid(filename,  
+  ierr =       vbmr.regrid(filename,
                            config.get("bootstrapping_bmelt_value_no_var")); CHKERRQ(ierr);
-  ierr =       vGhf.regrid(filename,  
+  ierr =       vGhf.regrid(filename,
                            config.get("bootstrapping_geothermal_flux_value_no_var"));
   CHKERRQ(ierr);
-  ierr =    vuplift.regrid(filename,  
+  ierr =    vuplift.regrid(filename,
                            config.get("bootstrapping_uplift_value_no_var")); CHKERRQ(ierr);
+
+
+  if (config.get_flag("drainageBasins")) {
+    ierr =    vBasinMask.regrid(filename,
+                           config.get("bootstrapping_basinmask_value_no_var")); CHKERRQ(ierr);
+  }
 
   if (config.get_flag("part_grid")) {
     // if part_grid is "on", set fields tracking contents of partially-filled
@@ -214,13 +220,13 @@ PetscErrorCode IceModel::bootstrap_3d() {
 
   // set the initial age of the ice if appropriate
   if (config.get_flag("do_age")) {
-    ierr = verbPrintf(2, grid.com, 
+    ierr = verbPrintf(2, grid.com,
       "  setting initial age to %.4f years\n", config.get("initial_age_of_ice_years"));
       CHKERRQ(ierr);
       tau3.set(config.get("initial_age_of_ice_years", "years", "seconds"));
   }
-  
-  ierr = verbPrintf(2, grid.com, 
+
+  ierr = verbPrintf(2, grid.com,
      "  filling in ice and bedrock temperatures using surface temps and quartic guess\n");
      CHKERRQ(ierr);
   ierr = putTempAtDepth(); CHKERRQ(ierr);
@@ -255,7 +261,7 @@ Within the ice, set
 \f[T(z) = T_s + \alpha (H-z)^2 + \beta (H-z)^4\f]
 where \f$\alpha,\beta\f$ are chosen so that
 \f[\frac{\partial T}{\partial z}\Big|_{z=0} = - \frac{g}{k_i}\f]
-and 
+and
 \f[\frac{\partial T}{\partial z}\Big|_{z=H/4} = - \frac{g}{2 k_i}.\f]
 
 The point of the second condition is our observation that, in observed ice, the
@@ -290,7 +296,7 @@ PetscErrorCode IceModel::putTempAtDepth() {
   }
 
   IceModelVec3 *result;
-  if (do_cold) 
+  if (do_cold)
     result = &T3;
   else
     result = &Enth3;
@@ -305,7 +311,7 @@ PetscErrorCode IceModel::putTempAtDepth() {
     for (PetscInt j=grid.ys; j<grid.ys+grid.ym; ++j) {
       const PetscScalar HH = vH(i,j);
       const PetscInt    ks = grid.kBelowHeight(HH);
-      
+
       // within ice
       const PetscScalar g = vGhf(i,j);
       const PetscScalar beta = (4.0/21.0) * (g / (2.0 * ice_k * HH * HH * HH));
@@ -320,11 +326,11 @@ PetscErrorCode IceModel::putTempAtDepth() {
       }
       for (PetscInt k = ks; k < grid.Mz; k++) // above ice
         T[k] = artm(i,j);
-      
+
       if (!do_cold) {
 	for (PetscInt k = 0; k < grid.Mz; ++k) {
 	  const PetscScalar depth = HH - grid.zlevels[k];
-	  const PetscScalar pressure = 
+	  const PetscScalar pressure =
 	    EC->getPressureFromDepth(depth);
 	  // reuse T to store enthalpy; assume that the ice is cold
 	  ierr = EC->getEnthPermissive(T[k], 0.0, pressure, T[k]); CHKERRQ(ierr);
@@ -332,7 +338,7 @@ PetscErrorCode IceModel::putTempAtDepth() {
       }
 
       ierr = result->setInternalColumn(i,j,T); CHKERRQ(ierr);
-      
+
     }
   }
   ierr =     vH.end_access(); CHKERRQ(ierr);

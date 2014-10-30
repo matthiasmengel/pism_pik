@@ -157,6 +157,9 @@ netcdf pism_config {
     pism_config:bootstrapping_tillphi_value_no_var = 15.0;
     pism_config:bootstrapping_tillphi_value_no_var_doc = "degrees; till friction angle value to use if variable tillphi is absent in bootstrapping file; tends not to slip";
 
+    pism_config:bootstrapping_basinmask_value_no_var = 0.0;
+    pism_config:bootstrapping_basinmask_value_no_var_doc = "no units, mask indicates drainage basin for Antarctica, for use in oceanboxmodel";
+
     pism_config:sia_enhancement_factor = 1.0;
     pism_config:sia_enhancement_factor_doc = "; Flow enhancement factor for SIA";
 
@@ -290,7 +293,7 @@ netcdf pism_config {
     pism_config:gamma_T_doc = "m s-1; Turbulent heat exchange coefficient used in ocean component '-ocean th'. Default value from Hellmer and Olbers 89.";
 
     pism_config:gamma_S = 5.05e-7;
-    pism_config:gamma_S_doc = "m s-1; Turbulent salt exchange coefficient used in ocean component '-ocean th'. Default value from Hellmer and Olbers 89."; 
+    pism_config:gamma_S_doc = "m s-1; Turbulent salt exchange coefficient used in ocean component '-ocean th'. Default value from Hellmer and Olbers 89.";
 
     // for next constants, note (VELOCITY/LENGTH)^2  is very close to 10^-27; compare "\epsilon^2/L^2" which
     // appears in formula (4.1) in C. Schoof 2006 "A variational approach to ice streams" J Fluid Mech 556 pp 227--251

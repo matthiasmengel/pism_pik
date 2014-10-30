@@ -31,16 +31,46 @@
 //public:
    //POoceanboxmodel(IceGrid &g, const NCConfigVariable &conf);
 
-//class POoceanboxmodel : public PGivenClimate<POModifier,PISMOceanModel>
-//{
-class POoceanboxmodel : public PISMOceanModel {
+
+class POoceanboxmodel : public PGivenClimate<POModifier,PISMOceanModel>
+{
 public:
-  POoceanboxmodel(IceGrid &g, const NCConfigVariable &conf);
-  //  : PGivenClimate<POModifier,PISMOceanModel>(g, conf, NULL)
-  //{
-  //  temp_name       = "thetao";
-  //  mass_flux_name  = "salinity"; //NOTE: salinity_name instead of mass_flux_name
-  //  option_prefix   = "-oceanboxmodel"; // Ronja: changed from -ocean_boxmodel
+  POoceanboxmodel(IceGrid &g, const NCConfigVariable &conf)
+    : PGivenClimate<POModifier,PISMOceanModel>(g, conf, NULL)
+  {
+    temp_name       = "thetao";
+    mass_flux_name  = "salinity"; //NOTE: salinity_name instead of mass_flux_name
+    option_prefix   = "-ocean_oceanboxmodel";
+
+    // shelfbmassflux.init_2d("shelfbmassflux", g);
+    // shelfbmassflux.set_string("pism_intent", "climate_state");
+    // shelfbmassflux.set_string("long_name",
+    //                           "ice mass flux from ice shelf base (positive flux is loss from ice shelf)");
+    // shelfbmassflux.set_units("m s-1");
+    // shelfbmassflux.set_glaciological_units("m year-1");
+
+    // temp.init_2d("shelfbtemp", g);
+    // temp.set_string("pism_intent", "climate_state");
+    // temp.set_string("long_name",
+    //                       "absolute temperature at ice shelf base");
+    // temp.set_units("Kelvin");
+
+    //modified by Ricarda
+    ocean_oceanboxmodel_deltaT_set = false;
+    delta_T = NULL;
+
+  }
+
+// class POoceanboxmodel : public PGivenClimate<POModifier,PISMOceanModel>
+// {
+// // class POoceanboxmodel : public PISMOceanModel {
+// // public:
+//   POoceanboxmodel(IceGrid &g, const NCConfigVariable &conf);
+//   //  : PGivenClimate<POModifier,PISMOceanModel>(g, conf, NULL)
+//   //{
+//   //  temp_name       = "thetao";
+//   //  mass_flux_name  = "salinity"; //NOTE: salinity_name instead of mass_flux_name
+//   //  option_prefix   = "-oceanboxmodel"; // Ronja: changed from -ocean_boxmodel
 
 //    obm_deltaT_set = false;
 //    delta_T = NULL;
@@ -67,16 +97,16 @@ public:
    virtual PetscErrorCode shelf_base_temperature(IceModelVec2S &result);
    virtual PetscErrorCode shelf_base_mass_flux(IceModelVec2S &result);
 
-   virtual void add_vars_to_output(string keyword, map<string,NCSpatialVariable> &result);
-   virtual PetscErrorCode define_variables(set<string> vars, const PIO &nc,
-                                          PISM_IO_Type nctype);
-   virtual PetscErrorCode write_variables(set<string> vars, string filename);
+   // virtual void add_vars_to_output(string keyword, map<string,NCSpatialVariable> &result);
+   // virtual PetscErrorCode define_variables(set<string> vars, const PIO &nc,
+   //                                        PISM_IO_Type nctype);
+   // virtual PetscErrorCode write_variables(set<string> vars, string filename);
 
 protected:
   IceModelVec2S *ice_thickness, *topg, *lat, *lon, *basins;	// not owned by this class
   IceModelVec2S SHELFmask, BOXMODELmask, Soc, Soc_base, Toc, Toc_base, Toc_inCelsius, T_star, Toc_anomaly, overturning, heatflux, basalmeltrate_shelf;
   NCSpatialVariable shelfbmassflux, shelfbtemp;
-  bool obm_deltaT_set, drainageBasins_set;
+  bool ocean_oceanboxmodel_deltaT_set, drainageBasins_set;
   Timeseries *delta_T;
 
 //  bool firstOceanBoxModelStep;

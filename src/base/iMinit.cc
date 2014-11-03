@@ -864,7 +864,10 @@ PetscErrorCode IceModel::init_ocean_kill() {
 
   MaskQuery m(vMask);
 
-  IceModelVec2S thickness, *tmp;
+  bool okm_set;
+  ierr = PISMOptionsIsSet("-ocean_kill_mask", okm_set); CHKERRQ(ierr);
+
+  IceModelVec2S thickness, *tmp, okm;
 
   if (filename.empty()) {
     ierr = verbPrintf(2, grid.com,
@@ -872,18 +875,36 @@ PetscErrorCode IceModel::init_ocean_kill() {
        "  to set the fixed calving front location.\n"); CHKERRQ(ierr);
     tmp = &vH;
   } else {
-    ierr = verbPrintf(2, grid.com,
-       "* Option -ocean_kill seen: setting fixed calving front location using\n"
-       "  ice thickness from '%s'.\n",filename.c_str()); CHKERRQ(ierr);
 
-    ierr = thickness.create(grid, "thk", false); CHKERRQ(ierr);
-    ierr = thickness.set_attrs("temporary", "land ice thickness",
+    if (okm_set) {
+  
+      ierr = okm.create(grid, "ocean_kill_mask", false); CHKERRQ(ierr);
+      ierr = okm.set_attrs("internal","mask specifying fixed calving front locations","", ""); CHKERRQ(ierr);
+      ierr = okm.regrid(filename, true); CHKERRQ(ierr);
+      tmp = &okm;
+
+      ierr = verbPrintf(2, grid.com,
+        "* Option -ocean_kill seen: setting fixed calving front location using\n"
+        "  ocean_kill_mask from '%s'.\n",filename.c_str()); CHKERRQ(ierr);
+ 
+      ierr = okm.copy_to(ocean_kill_mask); CHKERRQ(ierr);
+      return 0;
+ 
+    } else {
+
+      ierr = verbPrintf(2, grid.com,
+        "* Option -ocean_kill seen: setting fixed calving front location using\n"
+        "  ice thickness from '%s'.\n",filename.c_str()); CHKERRQ(ierr);
+
+      ierr = thickness.create(grid, "thk", false); CHKERRQ(ierr);
+      ierr = thickness.set_attrs("temporary", "land ice thickness",
                                "m", "land_ice_thickness"); CHKERRQ(ierr);
-    ierr = thickness.set_attr("valid_min", 0.0); CHKERRQ(ierr);
+      ierr = thickness.set_attr("valid_min", 0.0); CHKERRQ(ierr);
 
-    ierr = thickness.regrid(filename, true); CHKERRQ(ierr);
+      ierr = thickness.regrid(filename, true); CHKERRQ(ierr);
 
-    tmp = &thickness;
+      tmp = &thickness;
+    }
   }
 
   ierr = ocean_kill_mask.begin_access(); CHKERRQ(ierr);

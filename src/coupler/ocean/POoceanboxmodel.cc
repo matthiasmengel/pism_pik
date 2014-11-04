@@ -154,6 +154,15 @@ PetscErrorCode POoceanboxmodel::init(PISMVars &vars) {
   return 0;
 }
 
+PetscErrorCode POoceanboxmodel::update(PetscReal my_t, PetscReal my_dt) {
+  PetscErrorCode ierr = update_internal(my_t, my_dt); CHKERRQ(ierr);
+
+  ierr = mass_flux.at_time(t); CHKERRQ(ierr);
+  ierr = temp.at_time(t); CHKERRQ(ierr);
+
+  return 0;
+}
+
 const int POoceanboxmodel::shelf_unidentified = -99.0; // This should never show up in the .nc-files.
 // const int POoceanboxmodel::basin_RossSea = -1.0; // This should never show up in the .nc-files.
 // const int POoceanboxmodel::basin_WeddellSea = -2.0; // This should never show up in the .nc-files.
@@ -533,9 +542,14 @@ PetscErrorCode POoceanboxmodel::oceanTemperature() { // FIXME unnecessary when e
   ierr = Toc_base.begin_access();   CHKERRQ(ierr);
   ierr = Toc_anomaly.begin_access();   CHKERRQ(ierr);
   ierr = Toc.begin_access();   CHKERRQ(ierr);
+  // ierr = temp.begin_access();   CHKERRQ(ierr);
+  // ierr = mass_flux.begin_access();   CHKERRQ(ierr);
 
   for (PetscInt i=grid.xs; i<grid.xs+grid.xm; ++i) {
     for (PetscInt j=grid.ys; j<grid.ys+grid.ym; ++j) {
+
+      // ierr = verbPrintf(2, grid.com, "thetao=%f \n",temp(i,j)); CHKERRQ(ierr);
+      // ierr = verbPrintf(2, grid.com, "salinity=%f \n",mass_flux(i,j)); CHKERRQ(ierr);
 
       // make sure all temperatures are zero at the beginning of each timestep
       Toc(i,j) = 273.15; // in K
@@ -596,6 +610,8 @@ PetscErrorCode POoceanboxmodel::oceanTemperature() { // FIXME unnecessary when e
   ierr = Toc_base.end_access();   CHKERRQ(ierr);
   ierr = Toc_anomaly.end_access();   CHKERRQ(ierr);
   ierr = Toc.end_access();   CHKERRQ(ierr);
+  // ierr = temp.end_access();   CHKERRQ(ierr);
+  // ierr = mass_flux.end_access();   CHKERRQ(ierr);
 
   return 0;
 }
@@ -1039,7 +1055,6 @@ PetscErrorCode POoceanboxmodel::basalMeltRateForOtherShelves() {
 
   return 0;
 }
-
 
 
 PetscErrorCode POoceanboxmodel::shelf_base_temperature(IceModelVec2S &result) {

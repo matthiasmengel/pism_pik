@@ -185,7 +185,7 @@ const int POoceanboxmodel::box_IF = 2.0;  // ocean box covering the rest of the 
 // TODO Toc_base and Soc_base need to be read from file instead! Jippie!
 
 //! Find all ice shelves in four pre-defined regions: Ross Sea, Weddell Sea, Amundsen Sea, East Antarctica
-PetscErrorCode POoceanboxmodel::AntarcticBasins() { //NOTE
+PetscErrorCode POoceanboxmodel::AntarcticBasins() { 
   PetscErrorCode ierr;
   ierr = verbPrintf(2, grid.com,
                     "NOW in AntarcticBasins rountine\n"); CHKERRQ(ierr);
@@ -196,7 +196,7 @@ PetscErrorCode POoceanboxmodel::AntarcticBasins() { //NOTE
   ierr = topg->begin_access();   CHKERRQ(ierr);
   ierr = lat->begin_access();   CHKERRQ(ierr);
   ierr = lon->begin_access();   CHKERRQ(ierr);
-  ierr = SHELFmask.begin_access();   CHKERRQ(ierr);
+  ierr = SHELFmask.begin_access();   CHKERRQ(ierr); //FIXME delete when possible
 
   // STEP 1: Declare floating cells which should certainly belong to a specific shelf
   // shelf regions are given as lon, lat - ranges; mark each floating box accordingly

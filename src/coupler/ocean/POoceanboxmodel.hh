@@ -101,7 +101,7 @@ public:
    // virtual void add_vars_to_output(string keyword, map<string,NCSpatialVariable> &result);
    // virtual PetscErrorCode define_variables(set<string> vars, const PIO &nc,
    //                                        PISM_IO_Type nctype);
-   // virtual PetscErrorCode write_variables(set<string> vars, string filename);
+   virtual PetscErrorCode write_variables(set<string> vars, string filename); // FIXME included by Ronja to write the variables to extra files. Is there a smarter way?
 
 protected:
   IceModelVec2S *ice_thickness, *topg, *lat, *lon, *basins;	// not owned by this class

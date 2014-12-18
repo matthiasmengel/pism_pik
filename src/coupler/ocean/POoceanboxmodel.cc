@@ -168,8 +168,8 @@ const int POoceanboxmodel::shelf_unidentified = -99.0; // This should never show
 // const int POoceanboxmodel::basin_WeddellSea = -2.0; // This should never show up in the .nc-files.
 // const int POoceanboxmodel::basin_EastAntarctica = -3.0; // This should never show up in the .nc-files.
 // const int POoceanboxmodel::basin_AmundsenSea = -4.0;  // This should never show up in the .nc-files.
-const int POoceanboxmodel::noshelf = 0.0;
-const int POoceanboxmodel::shelf_RossSea = 1.0;
+const int POoceanboxmodel::noshelf = 0.0; // NOTE brauchen wir den noch? glaube nicht...
+const int POoceanboxmodel::shelf_RossSea = 1.0; // FIXME raus, ersetzten durch???
 const int POoceanboxmodel::shelf_WeddellSea = 2.0;
 const int POoceanboxmodel::shelf_EastAntarctica = 3.0;
 const int POoceanboxmodel::shelf_AmundsenSea = 4.0;
@@ -180,12 +180,12 @@ const int POoceanboxmodel::box_noshelf = 0.0;
 const int POoceanboxmodel::box_GL = 1.0;  // ocean box covering the grounding line region
 const int POoceanboxmodel::box_IF = 2.0;  // ocean box covering the rest of the ice shelf
 
-// TODO read shelf mask from file
+// TODO read shelf mask from file DONE
 // TODO why is there no ice front box?
 // TODO Toc_base and Soc_base need to be read from file instead! Jippie!
 
 //! Find all ice shelves in four pre-defined regions: Ross Sea, Weddell Sea, Amundsen Sea, East Antarctica
-PetscErrorCode POoceanboxmodel::AntarcticBasins() {
+PetscErrorCode POoceanboxmodel::AntarcticBasins() { //NOTE
   PetscErrorCode ierr;
   ierr = verbPrintf(2, grid.com,
                     "NOW in AntarcticBasins rountine\n"); CHKERRQ(ierr);
@@ -1105,8 +1105,10 @@ PetscErrorCode POoceanboxmodel::shelf_base_mass_flux(IceModelVec2S &result) {
 //    return 0;
 //  }
 
-// PetscErrorCode POoceanboxmodel::write_variables(set<string> vars, string filename) {
-//   PetscErrorCode ierr;
+
+//FIXME Included again by Ronja to write the variables to extra file. Is there a smarter way?? 
+PetscErrorCode POoceanboxmodel::write_variables(set<string> vars, string filename) {
+  PetscErrorCode ierr;
 //   IceModelVec2S tmp;
 
 //   if (set_contains(vars, "shelfbtemp")) {
@@ -1130,17 +1132,17 @@ PetscErrorCode POoceanboxmodel::shelf_base_mass_flux(IceModelVec2S &result) {
 //     ierr = tmp.write(filename.c_str()); CHKERRQ(ierr);
 //   }
 
-//   if (set_contains(vars, "BOXMODELmask")) {  ierr = BOXMODELmask.write(filename.c_str()); CHKERRQ(ierr);  }
-//   if (set_contains(vars, "SHELFmask")) {  ierr = SHELFmask.write(filename.c_str()); CHKERRQ(ierr);  }
-//   if (set_contains(vars, "Soc")) {  ierr = Soc.write(filename.c_str()); CHKERRQ(ierr); }
-//   if (set_contains(vars, "Soc_base")) { ierr = Soc_base.write(filename.c_str()); CHKERRQ(ierr); }
-//   if (set_contains(vars, "Toc")) { ierr = Toc.write(filename.c_str()); CHKERRQ(ierr); }
-//   if (set_contains(vars, "Toc_base")) {  ierr = Toc_base.write(filename.c_str()); CHKERRQ(ierr);  }
-//   if (set_contains(vars, "Toc_inCelsius")) { ierr = Toc_inCelsius.write(filename.c_str()); CHKERRQ(ierr);  }
-//   if (set_contains(vars, "T_star")) {  ierr = T_star.write(filename.c_str()); CHKERRQ(ierr);  }
-//   if (set_contains(vars, "Toc_anomaly")) {  ierr = Toc_anomaly.write(filename.c_str()); CHKERRQ(ierr); }
-//   if (set_contains(vars, "overturning")) {  ierr = overturning.write(filename.c_str()); CHKERRQ(ierr); }
-//   if (set_contains(vars, "heatflux")) {  ierr = heatflux.write(filename.c_str()); CHKERRQ(ierr);  }
-//   if (set_contains(vars, "basalmeltrate_shelf")) { ierr = basalmeltrate_shelf.write(filename.c_str()); CHKERRQ(ierr); }
-//   return 0;
-// }
+  if (set_contains(vars, "BOXMODELmask")) {  ierr = BOXMODELmask.write(filename.c_str()); CHKERRQ(ierr);  }
+  if (set_contains(vars, "SHELFmask")) {  ierr = SHELFmask.write(filename.c_str()); CHKERRQ(ierr);  }
+  if (set_contains(vars, "Soc")) {  ierr = Soc.write(filename.c_str()); CHKERRQ(ierr); }
+  if (set_contains(vars, "Soc_base")) { ierr = Soc_base.write(filename.c_str()); CHKERRQ(ierr); }
+  if (set_contains(vars, "Toc")) { ierr = Toc.write(filename.c_str()); CHKERRQ(ierr); }
+  if (set_contains(vars, "Toc_base")) {  ierr = Toc_base.write(filename.c_str()); CHKERRQ(ierr);  }
+  if (set_contains(vars, "Toc_inCelsius")) { ierr = Toc_inCelsius.write(filename.c_str()); CHKERRQ(ierr);  }
+  if (set_contains(vars, "T_star")) {  ierr = T_star.write(filename.c_str()); CHKERRQ(ierr);  }
+  if (set_contains(vars, "Toc_anomaly")) {  ierr = Toc_anomaly.write(filename.c_str()); CHKERRQ(ierr); }
+  if (set_contains(vars, "overturning")) {  ierr = overturning.write(filename.c_str()); CHKERRQ(ierr); }
+  if (set_contains(vars, "heatflux")) {  ierr = heatflux.write(filename.c_str()); CHKERRQ(ierr);  }
+  if (set_contains(vars, "basalmeltrate_shelf")) { ierr = basalmeltrate_shelf.write(filename.c_str()); CHKERRQ(ierr); }
+  return 0;
+}

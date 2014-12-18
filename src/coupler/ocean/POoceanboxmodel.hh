@@ -118,7 +118,7 @@ protected:
   PetscScalar counterRoss_init, counterWeddell_init, counterEastAntarctica_init, counterAmundsen_init; // initial size of each shelf
   PetscScalar counterRoss_GLbox, counterWeddell_GLbox, counterEastAntarctica_GLbox, counterAmundsen_GLbox; // size of grounding line box
   PetscScalar counterRoss_CFbox, counterWeddell_CFbox, counterEastAntarctica_CFbox, counterAmundsen_CFbox; // size of ice front box
-  PetscScalar k_Ross, k_Weddell, k_EastAntarctica, k_Amundsen; // determines the number of cells accounting for the grounding line and ice front boxes
+  PetscScalar k, k_Ross, k_Weddell, k_EastAntarctica, k_Amundsen; // determines the number of cells accounting for the grounding line and ice front boxes
 
   PetscScalar mean_salinity_Ross_GLbox, mean_salinity_Weddell_GLbox, mean_salinity_EastAntarctica_GLbox, mean_salinity_Amundsen_GLbox;
   PetscScalar mean_meltrate_Ross_GLbox, mean_meltrate_Weddell_GLbox, mean_meltrate_EastAntarctica_GLbox, mean_meltrate_Amundsen_GLbox;

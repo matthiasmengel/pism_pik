@@ -303,20 +303,21 @@ PetscErrorCode POoceanboxmodel::extentOfIceShelves() {
   PetscErrorCode ierr;
   ierr = verbPrintf(2, grid.com,
                     "NOW in extent of ice shelves rountine\n"); CHKERRQ(ierr);
+  /* RR from here to ....*/
   const PetscScalar rhoi = config.get("ice_density");
   const PetscScalar rhow = config.get("sea_water_density");
 
   // see olbers_hellmer10, table 1 for observed lengths of the ice shelves // FIXME config!
-  const PetscScalar RossLengthInitial=ceil( 800 / (grid.dx* 1e-3)); // length is given in km   // NOTE: This only works when initializing from a present-day configuration!
-  const PetscScalar WeddellLengthInitial=ceil( 620 / (grid.dx* 1e-3));
-  const PetscScalar EastAntarcticaLengthInitial=ceil( 540 / (grid.dx* 1e-3));
-  const PetscScalar AmundsenLengthInitial=ceil( 70 / (grid.dx* 1e-3));
+  const PetscScalar RossLengthInitial=ceil( 800 / (grid.dx* 1e-3)); // length is given in km   // NOTE: This only works when initializing from a present-day configuration!//FIXME delete when possible
+  const PetscScalar WeddellLengthInitial=ceil( 620 / (grid.dx* 1e-3));//FIXME delete when possible
+  const PetscScalar EastAntarcticaLengthInitial=ceil( 540 / (grid.dx* 1e-3));//FIXME delete when possible
+  const PetscScalar AmundsenLengthInitial=ceil( 70 / (grid.dx* 1e-3));//FIXME delete when possible
 
-  PetscScalar lcounterRoss=0.0; PetscScalar lcounterWeddell=0.0; PetscScalar lcounterEastAntarctica=0.0; PetscScalar lcounterAmundsen=0.0;
+  PetscScalar lcounterRoss=0.0; PetscScalar lcounterWeddell=0.0; PetscScalar lcounterEastAntarctica=0.0; PetscScalar lcounterAmundsen=0.0;//FIXME delete when possible
 
   ierr = ice_thickness->begin_access();   CHKERRQ(ierr);
   ierr = topg->begin_access();   CHKERRQ(ierr);
-  ierr = SHELFmask.begin_access(); CHKERRQ(ierr);
+  ierr = SHELFmask.begin_access(); CHKERRQ(ierr);//FIXME delete when possible
   ierr = BOXMODELmask.begin_access(); CHKERRQ(ierr);
 
   for (PetscInt i=grid.xs; i<grid.xs+grid.xm; ++i) {
@@ -334,10 +335,10 @@ PetscErrorCode POoceanboxmodel::extentOfIceShelves() {
       if (herefloating){
 	  //BOXMODELmask(i,j) = box_unidentified;
 	  // Count cells for specific shelves
-	  if (SHELFmask(i,j) == shelf_RossSea)        lcounterRoss++;
-	  if (SHELFmask(i,j) == shelf_WeddellSea)     lcounterWeddell++;
-	  if (SHELFmask(i,j) == shelf_EastAntarctica) lcounterEastAntarctica++;
-	  if (SHELFmask(i,j) == shelf_AmundsenSea)    lcounterAmundsen++;
+	  if (SHELFmask(i,j) == shelf_RossSea)        lcounterRoss++;//FIXME delete when possible
+	  if (SHELFmask(i,j) == shelf_WeddellSea)     lcounterWeddell++;//FIXME delete when possible
+	  if (SHELFmask(i,j) == shelf_EastAntarctica) lcounterEastAntarctica++;//FIXME delete when possible
+	  if (SHELFmask(i,j) == shelf_AmundsenSea)    lcounterAmundsen++;//FIXME delete when possible
 
 	  PetscScalar hg_N = (*topg)(i,j+1) + (*ice_thickness)(i,j+1),   hf_N = (1.0 - rhoi/rhow) * (*ice_thickness)(i,j+1);
 	  if((*ice_thickness)(i,j+1) > 0.0 && hg_N > hf_N){grounded_N = true;}
@@ -373,30 +374,30 @@ PetscErrorCode POoceanboxmodel::extentOfIceShelves() {
 
   ierr = ice_thickness->end_access();   CHKERRQ(ierr);
   ierr = topg->end_access();   CHKERRQ(ierr);
-  ierr = SHELFmask.end_access(); CHKERRQ(ierr);
+  ierr = SHELFmask.end_access(); CHKERRQ(ierr);//FIXME delete when possible
   ierr = BOXMODELmask.end_access(); CHKERRQ(ierr);
 
-  ierr = PISMGlobalSum(&lcounterRoss, &counterRoss, grid.com); CHKERRQ(ierr);
-  ierr = PISMGlobalSum(&lcounterWeddell, &counterWeddell, grid.com); CHKERRQ(ierr);
-  ierr = PISMGlobalSum(&lcounterEastAntarctica, &counterEastAntarctica, grid.com); CHKERRQ(ierr);
-  ierr = PISMGlobalSum(&lcounterAmundsen, &counterAmundsen, grid.com); CHKERRQ(ierr);
+  ierr = PISMGlobalSum(&lcounterRoss, &counterRoss, grid.com); CHKERRQ(ierr);//FIXME delete when possible
+  ierr = PISMGlobalSum(&lcounterWeddell, &counterWeddell, grid.com); CHKERRQ(ierr);//FIXME delete when possible
+  ierr = PISMGlobalSum(&lcounterEastAntarctica, &counterEastAntarctica, grid.com);//FIXME delete when possible CHKERRQ(ierr);
+  ierr = PISMGlobalSum(&lcounterAmundsen, &counterAmundsen, grid.com); CHKERRQ(ierr);//FIXME delete when possible
 
   // This gives the initial area in terms of number of boxes
   // FIXME the counterXXX_init is 0, so k_XXX is infinity, at the moment this is not used,
-  // TOD find a new routine to set the amount of iterations for the groundling line box definition
+  // TODO find a new routine to set the amount of iterations for the groundling line box definition
   //if (firstOceanBoxModelStep==true){
-    counterRoss_init=counterRoss;
-    counterWeddell_init=counterWeddell;
-    counterEastAntarctica_init=counterEastAntarctica;
-    counterAmundsen_init=counterAmundsen;
+  //  counterRoss_init=counterRoss;
+  //  counterWeddell_init=counterWeddell;
+    //counterEastAntarctica_init=counterEastAntarctica;
+  //  counterAmundsen_init=counterAmundsen;
   //}
 
   // The extent of the GL- and CF boxes depends on these parameters:  // FIXME config!
-  k_Ross=2;//ceil((counterRoss/counterRoss_init) * 0.4 * 0.33 * RossLengthInitial);
-  k_Weddell=2;//ceil((counterWeddell/counterWeddell_init) * 0.2 * 0.33 * WeddellLengthInitial);
-  k_EastAntarctica=2;//ceil((counterEastAntarctica/counterEastAntarctica_init) * 0.2 * 0.33 * EastAntarcticaLengthInitial);
-  k_Amundsen=2;//ceil((counterAmundsen/counterAmundsen_init) * 0.1 * 0.33 * AmundsenLengthInitial);
-
+  k_Ross=2; //FIXME delete when possible
+  k_Weddell=2; //FIXME delete when possible
+  k_EastAntarctica=2; //FIXME delete when possible
+  k_Amundsen=2; //FIXME delete when possible
+  k = 1; //FIXME make k depend on the rignot regions....
   //firstOceanBoxModelStep = false;
   return 0;
 }
@@ -409,48 +410,69 @@ PetscErrorCode POoceanboxmodel::identifyGroundingLineBox() {
   bool done=false;
   PetscScalar kcounter=0.0;
 
-  while(done == false && kcounter < PetscMax(PetscMax(PetscMax(k_Ross,k_Weddell),k_EastAntarctica),k_Amundsen)){
+  while(done == false && kcounter < k){//FIXME changed RR //PetscMax(PetscMax(PetscMax(k_Ross,k_Weddell),k_EastAntarctica),k_Amundsen)){ //FIXME changed RR
+    
     done = true;
     kcounter++;
-
-    ierr = SHELFmask.begin_access(); CHKERRQ(ierr);
+    const PetscScalar rhoi = config.get("ice_density"); //FIXME inserted Ronja
+    const PetscScalar rhow = config.get("sea_water_density"); //FIXME inserted Ronja
+    ierr = SHELFmask.begin_access(); CHKERRQ(ierr);//FIXME delete when possible
     ierr = BOXMODELmask.begin_access(); CHKERRQ(ierr);
+    ierr = ice_thickness->begin_access();   CHKERRQ(ierr);
+    ierr = topg->begin_access();   CHKERRQ(ierr);
 
     for (PetscInt i=grid.xs; i<grid.xs+grid.xm; ++i) {
       for (PetscInt j=grid.ys; j<grid.ys+grid.ym; ++j) {
-	if (kcounter < k_Ross && SHELFmask(i,j) == shelf_RossSea){ // this implies that i,j is floating
+
+	  const PetscScalar hgrounded = (*topg)(i,j) + (*ice_thickness)(i,j);
+	  const PetscScalar hfloating = (1.0 - rhoi/rhow) * (*ice_thickness)(i,j); // FIXME This assumes currentSeaLevel=0 !
+	  bool herefloating=false;
+	  if ((*ice_thickness)(i,j) > 0.0 && hgrounded < hfloating) {herefloating = true;}
+	  if (herefloating){ // this implies that i,j is floating
+	  
 	  if (BOXMODELmask(i,j) == box_unidentified &&
 	    (BOXMODELmask(i-1,j) == box_GL || BOXMODELmask(i,j-1) == box_GL || BOXMODELmask(i,j+1) == box_GL || BOXMODELmask(i+1,j) == box_GL || BOXMODELmask(i+1,j+1) == box_GL ||  BOXMODELmask(i+1,j-1) == box_GL ||  BOXMODELmask(i-1,j+1) == box_GL || BOXMODELmask(i-1,j-1) == box_GL )){
 		BOXMODELmask(i,j) = box_near_GL;
 		done = false;
 	  }
 	}
-	if (kcounter < k_Weddell && SHELFmask(i,j) == shelf_WeddellSea){ // this implies that i,j is floating
-	  if (BOXMODELmask(i,j) == box_unidentified &&
-	    (BOXMODELmask(i-1,j) == box_GL || BOXMODELmask(i,j-1) == box_GL || BOXMODELmask(i,j+1) == box_GL || BOXMODELmask(i+1,j) == box_GL || BOXMODELmask(i+1,j+1) == box_GL ||  BOXMODELmask(i+1,j-1) == box_GL ||  BOXMODELmask(i-1,j+1) == box_GL || BOXMODELmask(i-1,j-1) == box_GL )){
-		BOXMODELmask(i,j) = box_near_GL;
-		done = false;
-	  }
-	}
-	if (kcounter < k_EastAntarctica && SHELFmask(i,j) == shelf_EastAntarctica){ // this implies that i,j is floating
-	  if (BOXMODELmask(i,j) == box_unidentified &&
-      	    (BOXMODELmask(i-1,j) == box_GL || BOXMODELmask(i,j-1) == box_GL || BOXMODELmask(i,j+1) == box_GL || BOXMODELmask(i+1,j) == box_GL || BOXMODELmask(i+1,j+1) == box_GL ||  BOXMODELmask(i+1,j-1) == box_GL ||  BOXMODELmask(i-1,j+1) == box_GL || BOXMODELmask(i-1,j-1) == box_GL )){
-		BOXMODELmask(i,j) = box_near_GL;
-		done = false;
-	  }
-	}
-	if (kcounter < k_Amundsen && SHELFmask(i,j) == shelf_AmundsenSea){ // this implies that i,j is floating
-	  if (BOXMODELmask(i,j) == box_unidentified &&
-	    (BOXMODELmask(i-1,j) == box_GL || BOXMODELmask(i,j-1) == box_GL || BOXMODELmask(i,j+1) == box_GL || BOXMODELmask(i+1,j) == box_GL || BOXMODELmask(i+1,j+1) == box_GL ||  BOXMODELmask(i+1,j-1) == box_GL ||  BOXMODELmask(i-1,j+1) == box_GL || BOXMODELmask(i-1,j-1) == box_GL )){
-		BOXMODELmask(i,j) = box_near_GL;
-		done = false;
-	  }
-	}
+
+// FIXME changed Ronja: put below into comments
+// 	if (kcounter < k_Ross && SHELFmask(i,j) == shelf_RossSea){ // this implies that i,j is floating
+// 	  if (BOXMODELmask(i,j) == box_unidentified &&
+// 	    (BOXMODELmask(i-1,j) == box_GL || BOXMODELmask(i,j-1) == box_GL || BOXMODELmask(i,j+1) == box_GL || BOXMODELmask(i+1,j) == box_GL || BOXMODELmask(i+1,j+1) == box_GL ||  BOXMODELmask(i+1,j-1) == box_GL ||  BOXMODELmask(i-1,j+1) == box_GL || BOXMODELmask(i-1,j-1) == box_GL )){
+// 		BOXMODELmask(i,j) = box_near_GL;
+// 		done = false;
+// 	  }
+// 	}
+// 	if (kcounter < k_Weddell && SHELFmask(i,j) == shelf_WeddellSea){ // this implies that i,j is floating
+// 	  if (BOXMODELmask(i,j) == box_unidentified &&
+// 	    (BOXMODELmask(i-1,j) == box_GL || BOXMODELmask(i,j-1) == box_GL || BOXMODELmask(i,j+1) == box_GL || BOXMODELmask(i+1,j) == box_GL || BOXMODELmask(i+1,j+1) == box_GL ||  BOXMODELmask(i+1,j-1) == box_GL ||  BOXMODELmask(i-1,j+1) == box_GL || BOXMODELmask(i-1,j-1) == box_GL )){
+// 		BOXMODELmask(i,j) = box_near_GL;
+// 		done = false;
+// 	  }
+// 	}
+// 	if (kcounter < k_EastAntarctica && SHELFmask(i,j) == shelf_EastAntarctica){ // this implies that i,j is floating
+// 	  if (BOXMODELmask(i,j) == box_unidentified &&
+//       	    (BOXMODELmask(i-1,j) == box_GL || BOXMODELmask(i,j-1) == box_GL || BOXMODELmask(i,j+1) == box_GL || BOXMODELmask(i+1,j) == box_GL || BOXMODELmask(i+1,j+1) == box_GL ||  BOXMODELmask(i+1,j-1) == box_GL ||  BOXMODELmask(i-1,j+1) == box_GL || BOXMODELmask(i-1,j-1) == box_GL )){
+// 		BOXMODELmask(i,j) = box_near_GL;
+// 		done = false;
+// 	  }
+// 	}
+// 	if (kcounter < k_Amundsen && SHELFmask(i,j) == shelf_AmundsenSea){ // this implies that i,j is floating
+// 	  if (BOXMODELmask(i,j) == box_unidentified &&
+// 	    (BOXMODELmask(i-1,j) == box_GL || BOXMODELmask(i,j-1) == box_GL || BOXMODELmask(i,j+1) == box_GL || BOXMODELmask(i+1,j) == box_GL || BOXMODELmask(i+1,j+1) == box_GL ||  BOXMODELmask(i+1,j-1) == box_GL ||  BOXMODELmask(i-1,j+1) == box_GL || BOXMODELmask(i-1,j-1) == box_GL )){
+// 		BOXMODELmask(i,j) = box_near_GL;
+// 		done = false;
+// 	  }
+// 	} //FIXME Ronja end of comments 
 
       }
     }
 
-    ierr = SHELFmask.end_access(); CHKERRQ(ierr);
+    ierr = ice_thickness->end_access();   CHKERRQ(ierr);
+    ierr = topg->end_access();   CHKERRQ(ierr);
+    ierr = SHELFmask.end_access(); CHKERRQ(ierr);//FIXME delete when possible
     ierr = BOXMODELmask.end_access(); CHKERRQ(ierr);
     ierr = BOXMODELmask.beginGhostComm(); CHKERRQ(ierr);
     ierr = BOXMODELmask.endGhostComm(); CHKERRQ(ierr);
@@ -485,38 +507,38 @@ PetscErrorCode POoceanboxmodel::identifyIceFrontBox() {
     ierr = verbPrintf(2, grid.com,
                     "NOW in identifying ice front box rountine\n"); CHKERRQ(ierr);
   // counter to determine the size of the grounding line and ice front boxes for each shelf
-  PetscScalar lcounterRoss_CFbox=0.0;
-  PetscScalar lcounterWeddell_CFbox=0.0;
-  PetscScalar lcounterEastAntarctica_CFbox=0.0;
-  PetscScalar lcounterAmundsen_CFbox=0.0;
+  PetscScalar lcounterRoss_CFbox=0.0;//FIXME delete when possible
+  PetscScalar lcounterWeddell_CFbox=0.0;//FIXME delete when possible
+  PetscScalar lcounterEastAntarctica_CFbox=0.0;//FIXME delete when possible
+  PetscScalar lcounterAmundsen_CFbox=0.0;//FIXME delete when possible
 
-  ierr = SHELFmask.begin_access(); CHKERRQ(ierr);
+  ierr = SHELFmask.begin_access(); CHKERRQ(ierr);//FIXME delete when possible
   ierr = BOXMODELmask.begin_access(); CHKERRQ(ierr);
 
   for (PetscInt i=grid.xs; i<grid.xs+grid.xm; ++i) {
     for (PetscInt j=grid.ys; j<grid.ys+grid.ym; ++j) {
       if (BOXMODELmask(i,j) == box_unidentified){
 	BOXMODELmask(i,j) = box_IF;
-	if (SHELFmask(i,j) == shelf_RossSea) lcounterRoss_CFbox++;
-	if (SHELFmask(i,j) == shelf_WeddellSea) lcounterWeddell_CFbox++;
-	if (SHELFmask(i,j) == shelf_EastAntarctica) lcounterEastAntarctica_CFbox++;
-	if (SHELFmask(i,j) == shelf_AmundsenSea) lcounterAmundsen_CFbox++;
+	if (SHELFmask(i,j) == shelf_RossSea) lcounterRoss_CFbox++;//FIXME delete when possible
+	if (SHELFmask(i,j) == shelf_WeddellSea) lcounterWeddell_CFbox++;//FIXME delete when possible
+	if (SHELFmask(i,j) == shelf_EastAntarctica) lcounterEastAntarctica_CFbox++;//FIXME delete when possible
+	if (SHELFmask(i,j) == shelf_AmundsenSea) lcounterAmundsen_CFbox++;//FIXME delete when possible
       }
     }
   }
 
-  ierr = SHELFmask.end_access(); CHKERRQ(ierr);
+  ierr = SHELFmask.end_access(); CHKERRQ(ierr);//FIXME delete when possible
   ierr = BOXMODELmask.end_access(); CHKERRQ(ierr);
 
-  ierr = PISMGlobalSum(&lcounterRoss_CFbox, &counterRoss_CFbox, grid.com); CHKERRQ(ierr);
-  ierr = PISMGlobalSum(&lcounterWeddell_CFbox, &counterWeddell_CFbox, grid.com); CHKERRQ(ierr);
-  ierr = PISMGlobalSum(&lcounterEastAntarctica_CFbox, &counterEastAntarctica_CFbox, grid.com); CHKERRQ(ierr);
-  ierr = PISMGlobalSum(&lcounterAmundsen_CFbox, &counterAmundsen_CFbox, grid.com); CHKERRQ(ierr);
+  ierr = PISMGlobalSum(&lcounterRoss_CFbox, &counterRoss_CFbox, grid.com); CHKERRQ(ierr);//FIXME delete when possible
+  ierr = PISMGlobalSum(&lcounterWeddell_CFbox, &counterWeddell_CFbox, grid.com); CHKERRQ(ierr);//FIXME delete when possible
+  ierr = PISMGlobalSum(&lcounterEastAntarctica_CFbox, &counterEastAntarctica_CFbox, grid.com); CHKERRQ(ierr);//FIXME delete when possible
+  ierr = PISMGlobalSum(&lcounterAmundsen_CFbox, &counterAmundsen_CFbox, grid.com); CHKERRQ(ierr);//FIXME delete when possible
 
-  counterRoss_GLbox=counterRoss-counterRoss_CFbox;
-  counterWeddell_GLbox=counterWeddell-counterWeddell_CFbox;
-  counterEastAntarctica_GLbox=counterEastAntarctica-counterEastAntarctica_CFbox;
-  counterAmundsen_GLbox=counterAmundsen-counterAmundsen_CFbox;
+  counterRoss_GLbox=counterRoss-counterRoss_CFbox;//FIXME delete when possible
+  counterWeddell_GLbox=counterWeddell-counterWeddell_CFbox;//FIXME delete when possible
+  counterEastAntarctica_GLbox=counterEastAntarctica-counterEastAntarctica_CFbox;//FIXME delete when possible
+  counterAmundsen_GLbox=counterAmundsen-counterAmundsen_CFbox;//FIXME delete when possible
 
   return 0;
 }

@@ -180,6 +180,8 @@ const int POoceanboxmodel::box_noshelf = 0.0;
 const int POoceanboxmodel::box_GL = 1.0;  // ocean box covering the grounding line region
 const int POoceanboxmodel::box_IF = 2.0;  // ocean box covering the rest of the ice shelf
 
+const int POoceanboxmodel::numberOfBasins = 18;
+
 // TODO read shelf mask from file DONE
 // TODO why is there no ice front box?
 // TODO Toc_base and Soc_base need to be read from file instead! Jippie!
@@ -392,13 +394,15 @@ PetscErrorCode POoceanboxmodel::extentOfIceShelves() {
   //  counterAmundsen_init=counterAmundsen;
   //}
 
-  // The extent of the GL- and CF boxes depends on these parameters:  // FIXME config!
-  k_Ross=2; //FIXME delete when possible
-  k_Weddell=2; //FIXME delete when possible
-  k_EastAntarctica=2; //FIXME delete when possible
-  k_Amundsen=2; //FIXME delete when possible
-  k = 1; //FIXME make k depend on the rignot regions....
+
+ 
   //firstOceanBoxModelStep = false;
+  
+  for (int i=0; i< numberOfBasins; ++i) { //FIXME Ronja, new. Change the values of k accordingly...
+//         k.push_back(2); 
+        k[i] = 2;
+    }
+
   return 0;
 }
 
@@ -407,11 +411,17 @@ PetscErrorCode POoceanboxmodel::extentOfIceShelves() {
 PetscErrorCode POoceanboxmodel::identifyGroundingLineBox() {
   PetscErrorCode ierr;
   ierr = verbPrintf(2, grid.com,"NOW in identifying gl box rountine\n"); CHKERRQ(ierr);
+
   bool done=false;
   PetscScalar kcounter=0.0;
+  PetscScalar kmax = 0 ;
 
-  while(done == false && kcounter < k){//FIXME changed RR //PetscMax(PetscMax(PetscMax(k_Ross,k_Weddell),k_EastAntarctica),k_Amundsen)){ //FIXME changed RR
-    
+  for(int i=0; i<numberOfBasins;i++){  kmax = PetscMax(kmax,k[i]);  } //compute maximum
+//     ierr = verbPrintf(2, grid.com,"k set %f for i=%d, kmax=%f \n", k[i],i,kmax); CHKERRQ(ierr);
+
+  
+  while(done == false && kcounter < kmax){ //PetscMax(PetscMax(PetscMax(k_Ross,k_Weddell),k_EastAntarctica),k_Amundsen)){ //FIXME changed RR
+      
     done = true;
     kcounter++;
     const PetscScalar rhoi = config.get("ice_density"); //FIXME inserted Ronja
@@ -420,22 +430,27 @@ PetscErrorCode POoceanboxmodel::identifyGroundingLineBox() {
     ierr = BOXMODELmask.begin_access(); CHKERRQ(ierr);
     ierr = ice_thickness->begin_access();   CHKERRQ(ierr);
     ierr = topg->begin_access();   CHKERRQ(ierr);
-
+    ierr = basins->begin_access();   CHKERRQ(ierr);
+    
     for (PetscInt i=grid.xs; i<grid.xs+grid.xm; ++i) {
       for (PetscInt j=grid.ys; j<grid.ys+grid.ym; ++j) {
 
 	  const PetscScalar hgrounded = (*topg)(i,j) + (*ice_thickness)(i,j);
 	  const PetscScalar hfloating = (1.0 - rhoi/rhow) * (*ice_thickness)(i,j); // FIXME This assumes currentSeaLevel=0 !
 	  bool herefloating=false;
+
 	  if ((*ice_thickness)(i,j) > 0.0 && hgrounded < hfloating) {herefloating = true;}
-	  if (herefloating){ // this implies that i,j is floating
-	  
-	  if (BOXMODELmask(i,j) == box_unidentified &&
-	    (BOXMODELmask(i-1,j) == box_GL || BOXMODELmask(i,j-1) == box_GL || BOXMODELmask(i,j+1) == box_GL || BOXMODELmask(i+1,j) == box_GL || BOXMODELmask(i+1,j+1) == box_GL ||  BOXMODELmask(i+1,j-1) == box_GL ||  BOXMODELmask(i-1,j+1) == box_GL || BOXMODELmask(i-1,j-1) == box_GL )){
-		BOXMODELmask(i,j) = box_near_GL;
-		done = false;
+
+	  if (herefloating && kcounter < k[static_cast<int>(round((*basins)(i,j)))] ){ // this implies that i,j is floating, 
+	      	 
+// 	      ierr = verbPrintf(2, grid.com,"kcounter = %f  and k=%f for basin=%d \n",kcounter, k[static_cast<int>(round((*basins)(i,j)))], static_cast<int>(round((*basins)(i,j))) ); CHKERRQ(ierr); 
+
+	      if (BOXMODELmask(i,j) == box_unidentified &&
+		(BOXMODELmask(i-1,j) == box_GL || BOXMODELmask(i,j-1) == box_GL || BOXMODELmask(i,j+1) == box_GL || BOXMODELmask(i+1,j) == box_GL || BOXMODELmask(i+1,j+1) == box_GL ||  BOXMODELmask(i+1,j-1) == box_GL ||  BOXMODELmask(i-1,j+1) == box_GL || BOXMODELmask(i-1,j-1) == box_GL )){
+		    BOXMODELmask(i,j) = box_near_GL;
+		    done = false;
+	      }
 	  }
-	}
 
 // FIXME changed Ronja: put below into comments
 // 	if (kcounter < k_Ross && SHELFmask(i,j) == shelf_RossSea){ // this implies that i,j is floating
@@ -472,6 +487,7 @@ PetscErrorCode POoceanboxmodel::identifyGroundingLineBox() {
 
     ierr = ice_thickness->end_access();   CHKERRQ(ierr);
     ierr = topg->end_access();   CHKERRQ(ierr);
+    ierr = basins->end_access();   CHKERRQ(ierr);
     ierr = SHELFmask.end_access(); CHKERRQ(ierr);//FIXME delete when possible
     ierr = BOXMODELmask.end_access(); CHKERRQ(ierr);
     ierr = BOXMODELmask.beginGhostComm(); CHKERRQ(ierr);

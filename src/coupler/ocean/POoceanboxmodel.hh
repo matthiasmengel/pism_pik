@@ -116,10 +116,13 @@ protected:
   static const int shelf_unidentified, noshelf, shelf_RossSea, shelf_WeddellSea, shelf_EastAntarctica, shelf_AmundsenSea;
   static const int box_unidentified, box_noshelf, box_GL, box_near_GL, box_IF, numberOfBasins;
   PetscScalar counterRoss, counterWeddell, counterEastAntarctica, counterAmundsen; // size of each shelf
+  PetscScalar counter[18];
   PetscScalar counterRoss_init, counterWeddell_init, counterEastAntarctica_init, counterAmundsen_init; // initial size of each shelf
   PetscScalar counterRoss_GLbox, counterWeddell_GLbox, counterEastAntarctica_GLbox, counterAmundsen_GLbox; // size of grounding line box
+  PetscScalar counter_GLbox[18];
   PetscScalar counterRoss_CFbox, counterWeddell_CFbox, counterEastAntarctica_CFbox, counterAmundsen_CFbox; // size of ice front box
-  PetscScalar  k_Ross, k_Weddell, k_EastAntarctica, k_Amundsen; // determines the number of cells accounting for the grounding line and ice front boxes
+  PetscScalar counter_CFbox[18];
+  PetscScalar  k_Ross, k_Weddell, k_EastAntarctica, k_Amundsen; // determines the number of cells accounting for the grounding line and ice front boxes //FIXME delete when possible
   PetscScalar k[18];
 
   PetscScalar mean_salinity_Ross_GLbox, mean_salinity_Weddell_GLbox, mean_salinity_EastAntarctica_GLbox, mean_salinity_Amundsen_GLbox;

@@ -180,7 +180,7 @@ const int POoceanboxmodel::box_noshelf = 0.0;
 const int POoceanboxmodel::box_GL = 1.0;  // ocean box covering the grounding line region
 const int POoceanboxmodel::box_IF = 2.0;  // ocean box covering the rest of the ice shelf
 
-const int POoceanboxmodel::numberOfBasins = 18;
+const int POoceanboxmodel::numberOfBasins = 18; //FIXME The first number does not appear but at the borders....overthink this!!!
 
 // TODO read shelf mask from file DONE
 // TODO why is there no ice front box?
@@ -316,9 +316,13 @@ PetscErrorCode POoceanboxmodel::extentOfIceShelves() {
   const PetscScalar AmundsenLengthInitial=ceil( 70 / (grid.dx* 1e-3));//FIXME delete when possible
 
   PetscScalar lcounterRoss=0.0; PetscScalar lcounterWeddell=0.0; PetscScalar lcounterEastAntarctica=0.0; PetscScalar lcounterAmundsen=0.0;//FIXME delete when possible
+  
+  PetscScalar lcounter[numberOfBasins];
+  for(int i=0;i<numberOfBasins;i++){lcounter[i]=0.0;}
 
   ierr = ice_thickness->begin_access();   CHKERRQ(ierr);
   ierr = topg->begin_access();   CHKERRQ(ierr);
+  ierr = basins->begin_access();   CHKERRQ(ierr);
   ierr = SHELFmask.begin_access(); CHKERRQ(ierr);//FIXME delete when possible
   ierr = BOXMODELmask.begin_access(); CHKERRQ(ierr);
 
@@ -341,7 +345,8 @@ PetscErrorCode POoceanboxmodel::extentOfIceShelves() {
 	  if (SHELFmask(i,j) == shelf_WeddellSea)     lcounterWeddell++;//FIXME delete when possible
 	  if (SHELFmask(i,j) == shelf_EastAntarctica) lcounterEastAntarctica++;//FIXME delete when possible
 	  if (SHELFmask(i,j) == shelf_AmundsenSea)    lcounterAmundsen++;//FIXME delete when possible
-
+	  lcounter[static_cast<int>(round((*basins)(i,j)))]++;
+	  
 	  PetscScalar hg_N = (*topg)(i,j+1) + (*ice_thickness)(i,j+1),   hf_N = (1.0 - rhoi/rhow) * (*ice_thickness)(i,j+1);
 	  if((*ice_thickness)(i,j+1) > 0.0 && hg_N > hf_N){grounded_N = true;}
 	  PetscScalar hg_NE = (*topg)(i+1,j+1) + (*ice_thickness)(i+1,j+1),   hf_NE = (1.0 - rhoi/rhow) * (*ice_thickness)(i+1,j+1);
@@ -376,6 +381,7 @@ PetscErrorCode POoceanboxmodel::extentOfIceShelves() {
 
   ierr = ice_thickness->end_access();   CHKERRQ(ierr);
   ierr = topg->end_access();   CHKERRQ(ierr);
+  ierr = basins->end_access();   CHKERRQ(ierr);
   ierr = SHELFmask.end_access(); CHKERRQ(ierr);//FIXME delete when possible
   ierr = BOXMODELmask.end_access(); CHKERRQ(ierr);
 
@@ -383,7 +389,8 @@ PetscErrorCode POoceanboxmodel::extentOfIceShelves() {
   ierr = PISMGlobalSum(&lcounterWeddell, &counterWeddell, grid.com); CHKERRQ(ierr);//FIXME delete when possible
   ierr = PISMGlobalSum(&lcounterEastAntarctica, &counterEastAntarctica, grid.com);//FIXME delete when possible CHKERRQ(ierr);
   ierr = PISMGlobalSum(&lcounterAmundsen, &counterAmundsen, grid.com); CHKERRQ(ierr);//FIXME delete when possible
-
+  
+  for (int i; i<numberOfBasins;i++) { ierr = PISMGlobalSum(&lcounter[i], &counter[i], grid.com); CHKERRQ(ierr);} //FIXME check this!!!!
   // This gives the initial area in terms of number of boxes
   // FIXME the counterXXX_init is 0, so k_XXX is infinity, at the moment this is not used,
   // TODO find a new routine to set the amount of iterations for the groundling line box definition
@@ -402,7 +409,7 @@ PetscErrorCode POoceanboxmodel::extentOfIceShelves() {
 //         k.push_back(2); 
         k[i] = 2;
     }
-
+//   k[15] = 10; //FIXME take this out again....
   return 0;
 }
 
@@ -527,9 +534,13 @@ PetscErrorCode POoceanboxmodel::identifyIceFrontBox() {
   PetscScalar lcounterWeddell_CFbox=0.0;//FIXME delete when possible
   PetscScalar lcounterEastAntarctica_CFbox=0.0;//FIXME delete when possible
   PetscScalar lcounterAmundsen_CFbox=0.0;//FIXME delete when possible
+  PetscScalar lcounter_CFbox[numberOfBasins];
+  for (int i= 0;i<numberOfBasins;i++){ lcounter_CFbox[i]=0.0; //     ierr = verbPrintf(2, grid.com,"counter_CFbox[i]=%f, for i=%d \n", counter_CFbox[i], i); CHKERRQ(ierr);
+  }
 
   ierr = SHELFmask.begin_access(); CHKERRQ(ierr);//FIXME delete when possible
   ierr = BOXMODELmask.begin_access(); CHKERRQ(ierr);
+  ierr = basins->begin_access();   CHKERRQ(ierr);
 
   for (PetscInt i=grid.xs; i<grid.xs+grid.xm; ++i) {
     for (PetscInt j=grid.ys; j<grid.ys+grid.ym; ++j) {
@@ -539,27 +550,42 @@ PetscErrorCode POoceanboxmodel::identifyIceFrontBox() {
 	if (SHELFmask(i,j) == shelf_WeddellSea) lcounterWeddell_CFbox++;//FIXME delete when possible
 	if (SHELFmask(i,j) == shelf_EastAntarctica) lcounterEastAntarctica_CFbox++;//FIXME delete when possible
 	if (SHELFmask(i,j) == shelf_AmundsenSea) lcounterAmundsen_CFbox++;//FIXME delete when possible
+
+	lcounter_CFbox[static_cast<int>(round((*basins)(i,j)))]++; 
+// 	ierr = verbPrintf(2, grid.com,"basin = %d, lcounter_CFbox[basin]=%f \n", static_cast<int>(round((*basins)(i,j))), lcounter_CFbox[static_cast<int>(round((*basins)(i,j)))]); CHKERRQ(ierr);
       }
     }
   }
 
   ierr = SHELFmask.end_access(); CHKERRQ(ierr);//FIXME delete when possible
   ierr = BOXMODELmask.end_access(); CHKERRQ(ierr);
+  ierr = basins->end_access(); CHKERRQ(ierr);
 
   ierr = PISMGlobalSum(&lcounterRoss_CFbox, &counterRoss_CFbox, grid.com); CHKERRQ(ierr);//FIXME delete when possible
   ierr = PISMGlobalSum(&lcounterWeddell_CFbox, &counterWeddell_CFbox, grid.com); CHKERRQ(ierr);//FIXME delete when possible
   ierr = PISMGlobalSum(&lcounterEastAntarctica_CFbox, &counterEastAntarctica_CFbox, grid.com); CHKERRQ(ierr);//FIXME delete when possible
   ierr = PISMGlobalSum(&lcounterAmundsen_CFbox, &counterAmundsen_CFbox, grid.com); CHKERRQ(ierr);//FIXME delete when possible
+  
+  for(int i=0;i<numberOfBasins;i++) {ierr = PISMGlobalSum(&lcounter_CFbox[i], &counter_CFbox[i], grid.com); CHKERRQ(ierr);} //FIXME is this correct???
 
   counterRoss_GLbox=counterRoss-counterRoss_CFbox;//FIXME delete when possible
   counterWeddell_GLbox=counterWeddell-counterWeddell_CFbox;//FIXME delete when possible
   counterEastAntarctica_GLbox=counterEastAntarctica-counterEastAntarctica_CFbox;//FIXME delete when possible
   counterAmundsen_GLbox=counterAmundsen-counterAmundsen_CFbox;//FIXME delete when possible
-
+  
+//   for(int i=0;i<numberOfBasins;i++){
+//     ierr = verbPrintf(2, grid.com,"i=%d, counter[i] = %f, counter_CFbox[i]=%f, counter_GLbox[i]=%f \n", i,counter[i], counter_CFbox[i], counter_GLbox[i] ); CHKERRQ(ierr);
+//   }
+  
+  for(int i=0;i<numberOfBasins;i++){counter_GLbox[i]=counter[i]-counter_CFbox[i];} //FIXME is this correct??? Seems to be correct...
+//FIXME calculate the counter_GLbox independently and compare it to the value above!!!
   return 0;
 }
 
 
+
+
+//FIXME from here: Go on to replace the Shelfmask with th basins, i.e. always make loops.... and use the new counters...
 
 /*!
 Compute ocean temperature outside of the ice shelf cavities.

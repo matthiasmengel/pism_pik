@@ -183,11 +183,15 @@ const int POoceanboxmodel::box_IF = 2.0;  // ocean box covering the rest of the 
 const int POoceanboxmodel::numberOfBasins = 18; //FIXME The first number does not appear but at the borders....overthink this!!!
 
 // TODO read shelf mask from file DONE
-// TODO why is there no ice front box?
+// TODO why is there no ice front box? DONE
 // TODO Toc_base and Soc_base need to be read from file instead! Jippie!
 
 //! Find all ice shelves in four pre-defined regions: Ross Sea, Weddell Sea, Amundsen Sea, East Antarctica
 PetscErrorCode POoceanboxmodel::AntarcticBasins() { 
+	/*IN THIS ROUTINE: 
+	Before: Compute the SHELFmask, which knows four regions and is defined via lon/lat. 
+	Now: We replace the SHELFmask with the rignot basins, so this routine can be deleted! Then we have to call the routines somewhere else...
+	Ideas/TODOS: Replace the herefloating-inquiry with a mask-inquiry, where should we call the other routines? Now, the order is strange...*/
   PetscErrorCode ierr;
   ierr = verbPrintf(2, grid.com,
                     "NOW in AntarcticBasins rountine\n"); CHKERRQ(ierr);
@@ -302,6 +306,14 @@ PetscErrorCode POoceanboxmodel::AntarcticBasins() {
 
 //! Compute the extent of each ice shelf
 PetscErrorCode POoceanboxmodel::extentOfIceShelves() {
+	/* IN THIS ROUTINE
+	Before: Compute the counter k (for the number of iterations to identify the groundingline_box of the obm) for each SHELFmask-region.,
+			For each SHELFmaskregion: compute the amount of cells contained in this region=extent of the ice shelves in this region. 
+			Start to fill in the BOXMODELmask: identify the boxes directly at the groundingline. Set all other shelf_boxes to shelf_unidentified and all other cells to no_shelf.
+	Now: Compute counter k for each basin (TODO), 
+		 For each basin: compute the extent=amount of shelf-cells in this basin (variable called counter)
+		 Start to fill in the BOXMODELmask: identify the boxes directly at the groundingline. Set all other shelf_boxes to shelf_unidentified and all other cells to no_shelf. 
+	Ideas/Todos: Replace herefloating-inquiry. Is there an easier way to check for neighboring, grounded boxes? COMPUTE k for each basin!, IS counter correctly calculated?*/
   PetscErrorCode ierr;
   ierr = verbPrintf(2, grid.com,
                     "NOW in extent of ice shelves rountine\n"); CHKERRQ(ierr);
@@ -416,6 +428,11 @@ PetscErrorCode POoceanboxmodel::extentOfIceShelves() {
 
 //! Identify all cells which belong to the grounding line box
 PetscErrorCode POoceanboxmodel::identifyGroundingLineBox() {
+	/*  IN THIS ROUTINE:
+	Before: Make k steps starting from the Groundingline (in BOXMODELmask=GL_box) and label the reached boxes with GL_box (in each SHELFmask)
+	Now: Make k steps starting from the Groundingline (in BOXMODELmask=GL_box) and label the reached boxes with GL_box  (in each basin)
+	Ideas/Todos: replace herefloating-inquiry
+	*/
   PetscErrorCode ierr;
   ierr = verbPrintf(2, grid.com,"NOW in identifying gl box rountine\n"); CHKERRQ(ierr);
 
@@ -526,6 +543,11 @@ PetscErrorCode POoceanboxmodel::identifyGroundingLineBox() {
 Define the rest of each ice shelf as the respective near-ice front-box i.
 */
 PetscErrorCode POoceanboxmodel::identifyIceFrontBox() {
+	/*  IN THIS ROUTINE:
+	Before: 
+	Now: 
+	Ideas/Todos: replace herefloating-inquiry
+	*/
   PetscErrorCode ierr;
     ierr = verbPrintf(2, grid.com,
                     "NOW in identifying ice front box rountine\n"); CHKERRQ(ierr);

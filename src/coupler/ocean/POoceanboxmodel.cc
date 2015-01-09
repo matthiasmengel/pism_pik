@@ -544,9 +544,11 @@ Define the rest of each ice shelf as the respective near-ice front-box i.
 */
 PetscErrorCode POoceanboxmodel::identifyIceFrontBox() {
 	/*  IN THIS ROUTINE:
-	Before: 
-	Now: 
-	Ideas/Todos: replace herefloating-inquiry
+	Before: Set the BOXMODELmask for all cells which are unidentified to box_IF
+			Count the number of ice_front boxes for each SHELBmask region. Then number_of_all_cells - number_of_ice_front_cells = number_of_GL_cells
+	Now: Set the BOXMODELmask for all cells which are unidentified to box_IF
+		 Count the number of ice_front boxes for basin. Then number_of_all_cells - number_of_ice_front_cells = number_of_GL_cells
+	Ideas/Todos: Are the number of cells calcultaions correct? (counter...)
 	*/
   PetscErrorCode ierr;
     ierr = verbPrintf(2, grid.com,
@@ -567,13 +569,13 @@ PetscErrorCode POoceanboxmodel::identifyIceFrontBox() {
   for (PetscInt i=grid.xs; i<grid.xs+grid.xm; ++i) {
     for (PetscInt j=grid.ys; j<grid.ys+grid.ym; ++j) {
       if (BOXMODELmask(i,j) == box_unidentified){
-	BOXMODELmask(i,j) = box_IF;
-	if (SHELFmask(i,j) == shelf_RossSea) lcounterRoss_CFbox++;//FIXME delete when possible
-	if (SHELFmask(i,j) == shelf_WeddellSea) lcounterWeddell_CFbox++;//FIXME delete when possible
-	if (SHELFmask(i,j) == shelf_EastAntarctica) lcounterEastAntarctica_CFbox++;//FIXME delete when possible
-	if (SHELFmask(i,j) == shelf_AmundsenSea) lcounterAmundsen_CFbox++;//FIXME delete when possible
+		BOXMODELmask(i,j) = box_IF;
+		if (SHELFmask(i,j) == shelf_RossSea) lcounterRoss_CFbox++;//FIXME delete when possible
+		if (SHELFmask(i,j) == shelf_WeddellSea) lcounterWeddell_CFbox++;//FIXME delete when possible
+		if (SHELFmask(i,j) == shelf_EastAntarctica) lcounterEastAntarctica_CFbox++;//FIXME delete when possible
+		if (SHELFmask(i,j) == shelf_AmundsenSea) lcounterAmundsen_CFbox++;//FIXME delete when possible
 
-	lcounter_CFbox[static_cast<int>(round((*basins)(i,j)))]++; 
+		lcounter_CFbox[static_cast<int>(round((*basins)(i,j)))]++; 
 // 	ierr = verbPrintf(2, grid.com,"basin = %d, lcounter_CFbox[basin]=%f \n", static_cast<int>(round((*basins)(i,j))), lcounter_CFbox[static_cast<int>(round((*basins)(i,j)))]); CHKERRQ(ierr);
       }
     }

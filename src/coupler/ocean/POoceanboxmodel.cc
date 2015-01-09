@@ -191,7 +191,7 @@ PetscErrorCode POoceanboxmodel::AntarcticBasins() {
 	/*IN THIS ROUTINE: 
 	Before: Compute the SHELFmask, which knows four regions and is defined via lon/lat. 
 	Now: We replace the SHELFmask with the rignot basins, so this routine can be deleted! Then we have to call the routines somewhere else...
-	Ideas/TODOS: Replace the herefloating-inquiry with a mask-inquiry, where should we call the other routines? Now, the order is strange...*/
+	Ideas/TODOS: Replace the herefloating-inquiry with a mask-inquiry, currently we assume SeaLevel=0!, where should we call the other routines? Now, the order is strange...*/
   PetscErrorCode ierr;
   ierr = verbPrintf(2, grid.com,
                     "NOW in AntarcticBasins rountine\n"); CHKERRQ(ierr);
@@ -313,7 +313,8 @@ PetscErrorCode POoceanboxmodel::extentOfIceShelves() {
 	Now: Compute counter k for each basin (TODO), 
 		 For each basin: compute the extent=amount of shelf-cells in this basin (variable called counter)
 		 Start to fill in the BOXMODELmask: identify the boxes directly at the groundingline. Set all other shelf_boxes to shelf_unidentified and all other cells to no_shelf. 
-	Ideas/Todos: Replace herefloating-inquiry. Is there an easier way to check for neighboring, grounded boxes? COMPUTE k for each basin!, IS counter correctly calculated?*/
+	Ideas/Todos: Replace herefloating-inquiry. Is there an easier way to check for neighboring, grounded boxes? 
+			COMPUTE k for each basin!, IS counter correctly calculated?	Find boxes across processor domains?*/
   PetscErrorCode ierr;
   ierr = verbPrintf(2, grid.com,
                     "NOW in extent of ice shelves rountine\n"); CHKERRQ(ierr);
@@ -615,6 +616,8 @@ PetscErrorCode POoceanboxmodel::identifyIceFrontBox() {
 Compute ocean temperature outside of the ice shelf cavities.
 */
 PetscErrorCode POoceanboxmodel::oceanTemperature() { // FIXME unnecessary when everything is read from files?
+	/*
+	TODO : calculate the mean over the ocean temperature in front of the ice shelf for each basin*/
   PetscErrorCode ierr;
   ierr = verbPrintf(2, grid.com,
                     "NOW in ocean temp rountine\n"); CHKERRQ(ierr);

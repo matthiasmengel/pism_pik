@@ -610,13 +610,13 @@ PetscErrorCode POoceanboxmodel::identifyIceFrontBox() {
 
 
 
-//FIXME from here: Go on to replace the Shelfmask with th basins, i.e. always make loops.... and use the new counters...
-
 /*!
 Compute ocean temperature outside of the ice shelf cavities.
 */
 PetscErrorCode POoceanboxmodel::oceanTemperature() { // FIXME unnecessary when everything is read from files?
-	/*
+	/* IN THIS ROUTINE
+	Before: Set the ocean temperature in front of the ice shelf for each region (This is T_0 in the paper). Note that here, we have a field.
+	Want: Set the ocean temperature in front of the ice shelf for each basin (This is T_0 in the paper). Note that here, we have a field.
 	TODO : calculate the mean over the ocean temperature in front of the ice shelf for each basin*/
   PetscErrorCode ierr;
   ierr = verbPrintf(2, grid.com,
@@ -635,6 +635,22 @@ PetscErrorCode POoceanboxmodel::oceanTemperature() { // FIXME unnecessary when e
   ierr = Toc.begin_access();   CHKERRQ(ierr);
   // ierr = temp.begin_access();   CHKERRQ(ierr);
   // ierr = mass_flux.begin_access();   CHKERRQ(ierr);
+
+  PetscScalar numberOfRegions = 5; // FIXME: We want to replace this with numberOfBasins later on and fill it with the means of ocean temp for each region
+  PetscScalar Toc_base_correction[5];  
+  Toc_base_correction[noshelf]=0.0;  //(used to be -1.9;-this is never accessed)  //correction for floating cells without SHELFmask-there are none...
+  Toc_base_correction[shelf_RossSea]=-1.8475; // correction for Ross
+  Toc_base_correction[shelf_WeddellSea]=-1.8464; // correction for Weddell
+  Toc_base_correction[shelf_EastAntarctica]=-1.8344; //correction for East Antarctica
+  Toc_base_correction[shelf_AmundsenSea]=0.8427; // correction for Amundsen
+
+  PetscScalar Soc_base_value[5];
+  Soc_base_value[noshelf] = 0.0;//34.67;-this does not happen 
+  Soc_base_value[shelf_RossSea] = 34.83;
+  Soc_base_value[shelf_WeddellSea] = 34.74;
+  Soc_base_value[shelf_EastAntarctica] = 34.55;
+  Soc_base_value[shelf_AmundsenSea] = 34.67;
+
 
   for (PetscInt i=grid.xs; i<grid.xs+grid.xm; ++i) {
     for (PetscInt j=grid.ys; j<grid.ys+grid.ym; ++j) {
@@ -655,42 +671,56 @@ PetscErrorCode POoceanboxmodel::oceanTemperature() { // FIXME unnecessary when e
       if ((*ice_thickness)(i,j) > 0.0 && hgrounded < hfloating) {herefloating = true;}
 
       if (herefloating){
-	  // olbers_hellmer10, table 4: observed temperatures of the northern reservoirs = T0 := (T2min+T2max)
-	  // from these, subtract the temperature difference between year 2010 and the pre-industrial temperature (data from RCP scenario)
-	  if (SHELFmask(i,j)==shelf_RossSea){
-// 	    Toc_base(i,j) = 273.15 -1.7-1.0457091e-01;
-	    Toc_base(i,j) = 273.15 -1.8475;  // FIXME config! NO! READ FROM FILE!
-	    Soc_base(i,j) = 34.83;
-	  }else if (SHELFmask(i,j)==shelf_WeddellSea){
-	    // Here, weighted sum, i.e. T0 = (area(Filchner)/area(Weddell))*((-2-1.95)/2) + (area(Ronne)/area(Weddell))*((-1.9-1.5)/2)
-// 	    Toc_base(i,j) = 273.15 -1.76-1.7764463e-01;
-	    Toc_base(i,j) = 273.15 -1.8464;
-	    Soc_base(i,j) = 34.74;
-	  }else if (SHELFmask(i,j)==shelf_EastAntarctica){
-// 	    Toc_base(i,j) = 273.15 -1.8-1.5475473e-01;
-	    Toc_base(i,j) = 273.15 -1.8344;
-	    Soc_base(i,j) = 34.55;
-	  }else if (SHELFmask(i,j)==shelf_AmundsenSea){  // NOTE Pine Island northern reservoir has positive temperature!
-// 	    Toc_base(i,j) = 273.15 +1.1-1.1295637e-01;
-	    Toc_base(i,j) = 273.15 +0.8427;
-	    Soc_base(i,j) = 34.67;
-	  }else{
-	    Toc_base(i,j) = 273.15 -1.9;
-	    Soc_base(i,j) = 34.67;
-	  }
+      	if(static_cast<int>(round(SHELFmask(i,j)))!=SHELFmask(i,j)) {ierr = verbPrintf(2, grid.com,"There is a problem with the type cast"); CHKERRQ(ierr); }
+      	Toc_base(i,j) = 273.15 + Toc_base_correction[static_cast<int>(round(SHELFmask(i,j)))];
+      	Soc_base(i,j) =  Soc_base_value[static_cast<int>(round(SHELFmask(i,j)))];
+      	
+      	// NOTE  replaced lines below by Toc_base_correction, Soc_base_values vectors and the lines above
+		  // 	// olbers_hellmer10, table 4: observed temperatures of the northern reservoirs = T0 := (T2min+T2max)
+		  // 	// from these, subtract the temperature difference between year 2010 and the pre-industrial temperature (data from RCP scenario)
+		  // 	if (SHELFmask(i,j)==shelf_RossSea){
+				// // //  Toc_base(i,j) = 273.15 -1.7-1.0457091e-01;
+		  //     	Toc_base(i,j) = 273.15 -1.8475;  // FIXME config! NO! READ FROM FILE!
+		  //     	Soc_base(i,j) = 34.83;
+		  //   }else if (SHELFmask(i,j)==shelf_WeddellSea){
+		  //     	// Here, weighted sum, i.e. T0 = (area(Filchner)/area(Weddell))*((-2-1.95)/2) + (area(Ronne)/area(Weddell))*((-1.9-1.5)/2)
+				// // // // Toc_base(i,j) = 273.15 -1.76-1.7764463e-01;
+		  //     	Toc_base(i,j) = 273.15 -1.8464;
+		  //     	Soc_base(i,j) = 34.74;
+		  //   }else if (SHELFmask(i,j)==shelf_EastAntarctica){
+				// // // // Toc_base(i,j) = 273.15 -1.8-1.5475473e-01;
+		  //     	Toc_base(i,j) = 273.15 -1.8344;
+		  //     	Soc_base(i,j) = 34.55;
+		  //   }else if (SHELFmask(i,j)==shelf_AmundsenSea){  // NOTE Pine Island northern reservoir has positive temperature!
+				// // // //	Toc_base(i,j) = 273.15 +1.1-1.1295637e-01;
+		  //     	Toc_base(i,j) = 273.15 +0.8427;
+		  //     	Soc_base(i,j) = 34.67;
+		  //   }else{
+		  //     	Toc_base(i,j) = 273.15 -1.9;
+		  //     	Soc_base(i,j) = 34.67;
+		  //   }
+		
 
-	// Add temperature anomalies from given nc-file  // FIXME different nc-files for each basin!
-	if ((delta_T != NULL) && ocean_oceanboxmodel_deltaT_set) {
-	    Toc_anomaly(i,j) = (*delta_T)(t + 0.5 * dt);
-	}else{
-	  Toc_anomaly(i,j) = 0.0;
-	}
+		// Add temperature anomalies from given nc-file  // FIXME different nc-files for each basin!
+		if ((delta_T != NULL) && ocean_oceanboxmodel_deltaT_set) {
+	    	Toc_anomaly(i,j) = (*delta_T)(t + 0.5 * dt);
+		}else{
+	  		Toc_anomaly(i,j) = 0.0;
+		}
 
-	Toc(i,j) = Toc_base(i,j) + Toc_anomaly(i,j); // in K
+		Toc(i,j) = Toc_base(i,j) + Toc_anomaly(i,j); // in K
 
       } // end if herefloating
     } // end j
   } // end i
+
+  //FIXME print control boxes from each shelf:
+  ierr = verbPrintf(2, grid.com,"i,j = %d, %d,  SHELFmask(i,j)=%f, Toc_base(i,j)=%f, Soc_base(i,j)= %f\n", 100,100, SHELFmask(100,100), Toc_base(100,100), Soc_base(100,100)); CHKERRQ(ierr); // noshelf inland
+  ierr = verbPrintf(2, grid.com,"i,j = %d, %d,  SHELFmask(i,j)=%f, Toc_base(i,j)=%f, Soc_base(i,j)= %f\n", 10,10, SHELFmask(10,10), Toc_base(10,10), Soc_base(10,10)); CHKERRQ(ierr); //noshelf ocean
+  ierr = verbPrintf(2, grid.com,"i,j = %d, %d,  SHELFmask(i,j)=%f, Toc_base(i,j)=%f, Soc_base(i,j)= %f\n", 90,60, SHELFmask(90,60), Toc_base(90,60), Soc_base(90,60)); CHKERRQ(ierr); //Ross
+  ierr = verbPrintf(2, grid.com,"i,j = %d, %d,  SHELFmask(i,j)=%f, Toc_base(i,j)=%f, Soc_base(i,j)= %f\n", 60,110, SHELFmask(60,110), Toc_base(60,110), Soc_base(60,110)); CHKERRQ(ierr); //Weddell
+  ierr = verbPrintf(2, grid.com,"i,j = %d, %d,  SHELFmask(i,j)=%f, Toc_base(i,j)=%f, Soc_base(i,j)= %f\n", 158,116, SHELFmask(158,116), Toc_base(158,116), Soc_base(158,116)); CHKERRQ(ierr); //EAIS
+  ierr = verbPrintf(2, grid.com,"i,j = %d, %d,  SHELFmask(i,j)=%f, Toc_base(i,j)=%f, Soc_base(i,j)= %f\n", 40,82, SHELFmask(40,82), Toc_base(40,82), Soc_base(40,82)); CHKERRQ(ierr); //Amundsen
 
   ierr = ice_thickness->end_access();   CHKERRQ(ierr);
   ierr = topg->end_access();   CHKERRQ(ierr);

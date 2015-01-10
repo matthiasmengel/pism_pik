@@ -126,8 +126,11 @@ protected:
   PetscScalar k[18];
 
   PetscScalar mean_salinity_Ross_GLbox, mean_salinity_Weddell_GLbox, mean_salinity_EastAntarctica_GLbox, mean_salinity_Amundsen_GLbox;
+  PetscScalar mean_salinity_GLbox_vector[5]; //FIXME 5 should be numberOfBasins later on
   PetscScalar mean_meltrate_Ross_GLbox, mean_meltrate_Weddell_GLbox, mean_meltrate_EastAntarctica_GLbox, mean_meltrate_Amundsen_GLbox;
+  PetscScalar mean_meltrate_GLbox_vector[5]; //FIXME 5 should be numberOfBasins later on
   PetscScalar mean_overturning_Ross_GLbox, mean_overturning_Weddell_GLbox, mean_overturning_EastAntarctica_GLbox, mean_overturning_Amundsen_GLbox;
+  PetscScalar mean_overturning_GLbox_vector[5]; //FIXME 5 should be numberOfBasins ĺater on
 };
 
 #endif /* _POOCEANBOXMODEL_H_ */

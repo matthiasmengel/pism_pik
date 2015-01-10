@@ -932,11 +932,10 @@ PetscErrorCode POoceanboxmodel::basalMeltRateForGroundingLineBox() {
         
 	  	} //is there an ice_front box neighbor? // no else-case necessary since all variables are set to zero at the beginning of this routine
 
-	  	// 	ierr = verbPrintf(5, grid.com, "ERROR DETECTION GLBOX: SHELFmask=%f, BOXMODELmask=%f, H=%f, T_star=%f, C1=%e, g1=%e, helpterm1=%e, helpterm2=%e, Toc_base=%f, Toc_anomaly=%f, Toc_inCelsius=%f, Toc=%f, Soc_base=%f, Soc=%f, overturning=%e, basalmeltrate_shelf=%e\n", SHELFmask(i,j), BOXMODELmask(i,j), (*ice_thickness)(i,j), T_star(i,j), C1,g1, helpterm1, helpterm2, Toc_base(i,j), Toc_anomaly(i,j), Toc_inCelsius(i,j), Toc(i,j), Soc_base(i,j), Soc(i,j), overturning(i,j), basalmeltrate_shelf(i,j)); CHKERRQ(ierr);
-
-		// 	  if (grid.year >= 1916.00) {
-		// 	  ierr = verbPrintf(2, grid.com,"PISM_INFO: [rank %d] at %d, %d  -- T_star(i,j)=%e,C1=%e,g1=%e,helpterm=%e1,helpterm2=%e,Toc_inCelsius(i,j)=%e,Soc(i,j)=%e,basalmeltrate_shelf(i,j)=%e,overturning(i,j)=%e\n",grid.rank, i, j, T_star(i,j),C1,g1,helpterm1, helpterm2,Toc_inCelsius(i,j),Soc(i,j),basalmeltrate_shelf(i,j),overturning(i,j)); CHKERRQ(ierr);
-		// 	  }
+	  	// ierr = verbPrintf(5, grid.com, "ERROR DETECTION GLBOX: SHELFmask=%f, BOXMODELmask=%f, H=%f, T_star=%f, C1=%e, g1=%e, helpterm1=%e, helpterm2=%e, Toc_base=%f, Toc_anomaly=%f, Toc_inCelsius=%f, Toc=%f, Soc_base=%f, Soc=%f, overturning=%e, basalmeltrate_shelf=%e\n", SHELFmask(i,j), BOXMODELmask(i,j), (*ice_thickness)(i,j), T_star(i,j), C1,g1, helpterm1, helpterm2, Toc_base(i,j), Toc_anomaly(i,j), Toc_inCelsius(i,j), Toc(i,j), Soc_base(i,j), Soc(i,j), overturning(i,j), basalmeltrate_shelf(i,j)); CHKERRQ(ierr);
+		  // if (grid.year >= 1916.00) {
+		  // ierr = verbPrintf(2, grid.com,"PISM_INFO: [rank %d] at %d, %d  -- T_star(i,j)=%e,C1=%e,g1=%e,helpterm=%e1,helpterm2=%e,Toc_inCelsius(i,j)=%e,Soc(i,j)=%e,basalmeltrate_shelf(i,j)=%e,overturning(i,j)=%e\n",grid.rank, i, j, T_star(i,j),C1,g1,helpterm1, helpterm2,Toc_inCelsius(i,j),Soc(i,j),basalmeltrate_shelf(i,j),overturning(i,j)); CHKERRQ(ierr);
+		  // }
       }else { // i.e., neither Ross nor Weddell nor EastAntarctica nor Pine Island or not GL_box
 		      basalmeltrate_shelf(i,j) = 0.0;
       }
@@ -955,32 +954,61 @@ PetscErrorCode POoceanboxmodel::basalMeltRateForGroundingLineBox() {
   ierr = Soc.end_access(); CHKERRQ(ierr);
   ierr = overturning.end_access(); CHKERRQ(ierr);
   ierr = basalmeltrate_shelf.end_access(); CHKERRQ(ierr);
-
-  // PRINT
-  //ierr = verbPrintf(2, grid.com,"i,j = %d, %d,  lcounter=%f, lmean_overturning_GLbox_vector[shelf_id]=%f, Ross=%f, Weddell=%f, EastAntarctica=%f, Amundsen=%f\n", 
-  //        i,j, SHELFmask(i,j), lmean_overturning_GLbox_vector[shelf_id], lmean_overturning_Ross_GLbox, lmean_overturning_Weddell_GLbox, lmean_overturning_EastAntarctica_GLbox, lmean_salinity_Amundsen_GLbox) ; CHKERRQ(ierr); 
-        
-
+     
+  /* OLD */
   PetscScalar counter_edge_of_GLbox_Ross, counter_edge_of_GLbox_Weddell, counter_edge_of_GLbox_EastAntarctica, counter_edge_of_GLbox_Amundsen;
   ierr = PISMGlobalSum(&lcounter_edge_of_GLbox_Ross, &counter_edge_of_GLbox_Ross, grid.com); CHKERRQ(ierr);
   ierr = PISMGlobalSum(&lcounter_edge_of_GLbox_Weddell, &counter_edge_of_GLbox_Weddell, grid.com); CHKERRQ(ierr);
   ierr = PISMGlobalSum(&lcounter_edge_of_GLbox_EastAntarctica, &counter_edge_of_GLbox_EastAntarctica, grid.com); CHKERRQ(ierr);
   ierr = PISMGlobalSum(&lcounter_edge_of_GLbox_Amundsen, &counter_edge_of_GLbox_Amundsen, grid.com); CHKERRQ(ierr);
-
+  /* OLD */
+  /* NEW */
+  PetscScalar counter_edge_of_GLbox_vector[5]; //5 will be number of basins later on!
+  for(int i=0;i<numberOfRegions;i++) {ierr = PISMGlobalSum(&lcounter_edge_of_GLbox_vector[i], &counter_edge_of_GLbox_vector[i], grid.com); CHKERRQ(ierr);} //is correct
+  // COMPARE old and new
+  ierr = verbPrintf(2, grid.com," counter_edge_of_GLbox_vector[Weddell]=%f, Ross=%f, Weddell=%f, EastAntarctica=%f, Amundsen=%f\n", 
+          counter_edge_of_GLbox_vector[2], counter_edge_of_GLbox_Ross, counter_edge_of_GLbox_Weddell, counter_edge_of_GLbox_EastAntarctica, counter_edge_of_GLbox_Amundsen) ; CHKERRQ(ierr); 
+  /* NEW */ 
+  
+  /* OLD */
   ierr = PISMGlobalSum(&lmean_meltrate_Ross_GLbox, &mean_meltrate_Ross_GLbox, grid.com); CHKERRQ(ierr);
   ierr = PISMGlobalSum(&lmean_meltrate_Weddell_GLbox, &mean_meltrate_Weddell_GLbox, grid.com); CHKERRQ(ierr);
   ierr = PISMGlobalSum(&lmean_meltrate_EastAntarctica_GLbox, &mean_meltrate_EastAntarctica_GLbox, grid.com); CHKERRQ(ierr);
   ierr = PISMGlobalSum(&lmean_meltrate_Amundsen_GLbox, &mean_meltrate_Amundsen_GLbox, grid.com); CHKERRQ(ierr);
-
+  /* OLD */
+  /* NEW */
+  for(int i=0;i<numberOfRegions;i++) {ierr = PISMGlobalSum(&lmean_meltrate_GLbox_vector[i], &mean_meltrate_GLbox_vector[i], grid.com); CHKERRQ(ierr);} 
+  // COMPARE old and new
+  ierr = verbPrintf(2, grid.com," mean_meltrate_GLbox_vector[Weddell]=%e, Ross=%e, Weddell=%e, EastAntarctica=%e, Amundsen=%e\n", 
+          mean_meltrate_GLbox_vector[2], mean_meltrate_Ross_GLbox, mean_meltrate_Weddell_GLbox, mean_meltrate_EastAntarctica_GLbox, mean_meltrate_Amundsen_GLbox) ; CHKERRQ(ierr); 
+  /* NEW */
+  /* OLD */
   ierr = PISMGlobalSum(&lmean_salinity_Ross_GLbox, &mean_salinity_Ross_GLbox, grid.com); CHKERRQ(ierr);
   ierr = PISMGlobalSum(&lmean_salinity_Weddell_GLbox, &mean_salinity_Weddell_GLbox, grid.com); CHKERRQ(ierr);
   ierr = PISMGlobalSum(&lmean_salinity_EastAntarctica_GLbox, &mean_salinity_EastAntarctica_GLbox, grid.com); CHKERRQ(ierr);
   ierr = PISMGlobalSum(&lmean_salinity_Amundsen_GLbox, &mean_salinity_Amundsen_GLbox, grid.com); CHKERRQ(ierr);
-
+  /* OLD */
+  /* NEW */
+  for(int i=0;i<numberOfRegions;i++) {ierr = PISMGlobalSum(&lmean_salinity_GLbox_vector[i], &mean_salinity_GLbox_vector[i], grid.com); CHKERRQ(ierr);} 
+  // COMPARE old and new
+  ierr = verbPrintf(2, grid.com," mean_salinity_GLbox_vector[Weddell]=%f, Ross=%f, Weddell=%f, EastAntarctica=%f, Amundsen=%f\n", 
+          mean_salinity_GLbox_vector[2], mean_salinity_Ross_GLbox, mean_salinity_Weddell_GLbox, mean_salinity_EastAntarctica_GLbox, mean_salinity_Amundsen_GLbox) ; CHKERRQ(ierr); 
+  /* NEW */
+  
+  /*OLD*/
   ierr = PISMGlobalSum(&lmean_overturning_Ross_GLbox, &mean_overturning_Ross_GLbox, grid.com); CHKERRQ(ierr);
   ierr = PISMGlobalSum(&lmean_overturning_Weddell_GLbox, &mean_overturning_Weddell_GLbox, grid.com); CHKERRQ(ierr);
   ierr = PISMGlobalSum(&lmean_overturning_EastAntarctica_GLbox, &mean_overturning_EastAntarctica_GLbox, grid.com); CHKERRQ(ierr);
   ierr = PISMGlobalSum(&lmean_overturning_Amundsen_GLbox, &mean_overturning_Amundsen_GLbox, grid.com); CHKERRQ(ierr);
+  /* OLD */
+  /* NEW */
+  for(int i=0;i<numberOfRegions;i++) {ierr = PISMGlobalSum(&lmean_overturning_GLbox_vector[i], &mean_overturning_GLbox_vector[i], grid.com); CHKERRQ(ierr);} 
+  // COMPARE old and new
+  ierr = verbPrintf(2, grid.com," mean_overturning_GLbox_vector[Weddell]=%f, Ross=%f, Weddell=%f, EastAntarctica=%f, Amundsen=%f\n", 
+          mean_overturning_GLbox_vector[2], mean_overturning_Ross_GLbox, mean_overturning_Weddell_GLbox, mean_overturning_EastAntarctica_GLbox, mean_overturning_Amundsen_GLbox) ; CHKERRQ(ierr); 
+  /* NEW */
+
+
 
   if (counter_edge_of_GLbox_Ross>0.0){
     mean_salinity_Ross_GLbox=mean_salinity_Ross_GLbox/counter_edge_of_GLbox_Ross;

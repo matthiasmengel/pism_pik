@@ -105,6 +105,7 @@ public:
 
 protected:
   IceModelVec2S *ice_thickness, *topg, *lat, *lon, *basins;	// not owned by this class
+  IceModelVec2Int *mask;  // not owned by this class
   // FIXME Ronja: can we avoid always asking the floatation criterion by using *mask?
   IceModelVec2S SHELFmask, BOXMODELmask, Soc, Soc_base, Toc, Toc_base, Toc_inCelsius, T_star, Toc_anomaly, overturning, heatflux, basalmeltrate_shelf;
   NCSpatialVariable shelfbmassflux, shelfbtemp;
@@ -114,7 +115,7 @@ protected:
 //  bool firstOceanBoxModelStep;
 //   static const int basin_RossSea, basin_WeddellSea, basin_EastAntarctica, basin_AmundsenSea, box_near_GL;
   static const int shelf_unidentified, noshelf, shelf_RossSea, shelf_WeddellSea, shelf_EastAntarctica, shelf_AmundsenSea;
-  static const int box_unidentified, box_noshelf, box_GL, box_near_GL, box_IF, numberOfBasins;
+  static const int box_unidentified, box_noshelf, box_GL, box_near_GL, box_IF, numberOfBasins, maskfloating;
   PetscScalar counterRoss, counterWeddell, counterEastAntarctica, counterAmundsen; // size of each shelf
   PetscScalar counter[18];
   PetscScalar counterRoss_init, counterWeddell_init, counterEastAntarctica_init, counterAmundsen_init; // initial size of each shelf

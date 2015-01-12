@@ -519,7 +519,7 @@ PetscErrorCode IceModel::massContExplicitStep() {
   } else { SETERRQ(grid.com, 1, "PISM ERROR: surface == NULL"); }
 
   if (ocean != NULL) {
-    //ierr = ocean->shelf_base_temperature(shelfbtemp); CHKERRQ(ierr);//Torsten: not needed but called for consistency
+    ierr = ocean->shelf_base_temperature(shelfbtemp); CHKERRQ(ierr);//Torsten: not needed but called for consistency
     ierr = ocean->shelf_base_mass_flux(shelfbmassflux); CHKERRQ(ierr);
   } else { SETERRQ(grid.com, 2, "PISM ERROR: ocean == NULL"); }
   

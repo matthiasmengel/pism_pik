@@ -183,7 +183,7 @@ const int POoceanboxmodel::box_noshelf = 0.0;
 const int POoceanboxmodel::box_GL = 1.0;  // ocean box covering the grounding line region
 const int POoceanboxmodel::box_IF = 2.0;  // ocean box covering the rest of the ice shelf
 
-const int POoceanboxmodel::maskfloating = 3.0;  // ocean box covering the rest of the ice shelf
+const int POoceanboxmodel::maskfloating = MASK_FLOATING;  // ocean box covering the rest of the ice shelf
 
 const int POoceanboxmodel::numberOfBasins = 18; //FIXME The first number does not appear but at the borders....overthink this!!!
 
@@ -352,14 +352,14 @@ PetscErrorCode POoceanboxmodel::extentOfIceShelves() {
       bool herefloating=false;
       if ((*mask)(i,j)==maskfloating) {herefloating = true;}
 
-      const PetscScalar hgrounded = (*topg)(i,j) + (*ice_thickness)(i,j);
-      const PetscScalar hfloating = (1.0 - rhoi/rhow) * (*ice_thickness)(i,j); // FIXME This assumes currentSeaLevel=0 !
-      bool here2floating=false;
-      if ((*ice_thickness)(i,j) > 0.0 && hgrounded < hfloating) {here2floating = true;}
+      //const PetscScalar hgrounded = (*topg)(i,j) + (*ice_thickness)(i,j);
+      //const PetscScalar hfloating = (1.0 - rhoi/rhow) * (*ice_thickness)(i,j); // FIXME This assumes currentSeaLevel=0 !
+      //bool here2floating=false;
+      //if ((*ice_thickness)(i,j) > 0.0 && hgrounded < hfloating) {here2floating = true;}
 
-      if ((herefloating==true && here2floating==false) || (here2floating==true && herefloating==false)){ 
-        ierr = verbPrintf(2, grid.com, "!!!no mask match at i=%d, j=%d, m=%f, H=%f, Hg=%f, Hf=%f \n", i, j, (*mask)(i,j), (*ice_thickness)(i,j), hgrounded, hfloating); CHKERRQ(ierr); 
-      }
+      //if ((herefloating==true && here2floating==false) || (here2floating==true && herefloating==false)){ 
+      //  ierr = verbPrintf(2, grid.com, "!!!no mask match at i=%d, j=%d, m=%f, H=%f, Hg=%f, Hf=%f \n", i, j, (*mask)(i,j), (*ice_thickness)(i,j), hgrounded, hfloating); CHKERRQ(ierr); 
+      //}
 
       //bool grounded_N=false; bool grounded_NE=false; bool grounded_NW=false;
       //bool grounded_S=false; bool grounded_SE=false; bool grounded_SW=false;
@@ -656,23 +656,51 @@ PetscErrorCode POoceanboxmodel::oceanTemperature() { // FIXME unnecessary when e
   ierr = Toc_base.begin_access();   CHKERRQ(ierr);
   ierr = Toc_anomaly.begin_access();   CHKERRQ(ierr);
   ierr = Toc.begin_access();   CHKERRQ(ierr);
-  // ierr = temp.begin_access();   CHKERRQ(ierr);
-  // ierr = mass_flux.begin_access();   CHKERRQ(ierr);
+  ierr = temp.begin_access();   CHKERRQ(ierr);
+  ierr = mass_flux.begin_access();   CHKERRQ(ierr);
 
-  PetscScalar numberOfRegions = 5; // FIXME: We want to replace this with numberOfBasins later on and fill it with the means of ocean temp for each region
-  PetscScalar Toc_base_correction[5];  
+  PetscInt numberOfRegions = 5; // FIXME: We want to replace this with numberOfBasins later on and fill it with the means of ocean temp for each region
+  PetscScalar Toc_base_correction[numberOfRegions];  
   Toc_base_correction[noshelf]=0.0;  //(used to be -1.9;-this is never accessed)  //correction for floating cells without SHELFmask-there are none...
   Toc_base_correction[shelf_RossSea]=-1.8475; // correction for Ross
   Toc_base_correction[shelf_WeddellSea]=-1.8464; // correction for Weddell
   Toc_base_correction[shelf_EastAntarctica]=-1.8344; //correction for East Antarctica
   Toc_base_correction[shelf_AmundsenSea]=0.8427; // correction for Amundsen
 
-  PetscScalar Soc_base_value[5];
+  PetscScalar Soc_base_value[numberOfRegions];
   Soc_base_value[noshelf] = 0.0;//34.67;-this does not happen 
   Soc_base_value[shelf_RossSea] = 34.83;
   Soc_base_value[shelf_WeddellSea] = 34.74;
   Soc_base_value[shelf_EastAntarctica] = 34.55;
   Soc_base_value[shelf_AmundsenSea] = 34.67;
+
+
+  // caclulate mean over regions (Torsten)
+  PetscScalar m_count[numberOfRegions];
+  PetscScalar m_Sval[numberOfRegions];
+  PetscScalar m_Tval[numberOfRegions];
+
+  for (PetscInt i=grid.xs; i<grid.xs+grid.xm; ++i) {
+    for (PetscInt j=grid.ys; j<grid.ys+grid.ym; ++j) {     
+      m_count[static_cast<int>(round(SHELFmask(i,j)))]++;
+      m_Sval[static_cast<int>(round(SHELFmask(i,j)))]+=mass_flux(i,j);
+      m_Tval[static_cast<int>(round(SHELFmask(i,j)))]+=temp(i,j);
+    }
+  }
+
+  PetscScalar mean_count[numberOfRegions];
+  PetscScalar mean_Sval[numberOfRegions];
+  PetscScalar mean_Tval[numberOfRegions];
+
+  for(int i=0; i<numberOfRegions;i++){ 
+    ierr = PISMGlobalSum(&m_count[i], &mean_count[i], grid.com); CHKERRQ(ierr);
+    ierr = PISMGlobalSum(&m_Sval[i], &mean_Sval[i], grid.com); CHKERRQ(ierr);
+    ierr = PISMGlobalSum(&m_Tval[i], &mean_Tval[i], grid.com); CHKERRQ(ierr);
+    mean_Tval[i]=mean_Tval[i]/mean_count[i]-273.15;
+    mean_Sval[i]=mean_Sval[i]/mean_count[i];
+    ierr = verbPrintf(2, grid.com,"i=%d, cnt=%f, S=%f, T=%f\n", i,mean_count[i],mean_Sval[i],mean_Tval[i]); CHKERRQ(ierr);  
+  }
+
 
 
   for (PetscInt i=grid.xs; i<grid.xs+grid.xm; ++i) {
@@ -761,8 +789,8 @@ PetscErrorCode POoceanboxmodel::oceanTemperature() { // FIXME unnecessary when e
   ierr = Toc_base.end_access();   CHKERRQ(ierr);
   ierr = Toc_anomaly.end_access();   CHKERRQ(ierr);
   ierr = Toc.end_access();   CHKERRQ(ierr);
-  // ierr = temp.end_access();   CHKERRQ(ierr);
-  // ierr = mass_flux.end_access();   CHKERRQ(ierr);
+  ierr = temp.end_access();   CHKERRQ(ierr);
+  ierr = mass_flux.end_access();   CHKERRQ(ierr);
 
   return 0;
 }

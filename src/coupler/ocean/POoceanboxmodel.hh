@@ -115,23 +115,25 @@ protected:
 //  bool firstOceanBoxModelStep;
 //   static const int basin_RossSea, basin_WeddellSea, basin_EastAntarctica, basin_AmundsenSea, box_near_GL;
   static const int shelf_unidentified, noshelf, shelf_RossSea, shelf_WeddellSea, shelf_EastAntarctica, shelf_AmundsenSea;
-  static const int box_unidentified, box_noshelf, box_GL, box_near_GL, box_IF, numberOfBasins, maskfloating;
-  PetscScalar counterRoss, counterWeddell, counterEastAntarctica, counterAmundsen; // size of each shelf
-  PetscScalar counter[18];
-  PetscScalar counterRoss_init, counterWeddell_init, counterEastAntarctica_init, counterAmundsen_init; // initial size of each shelf
-  PetscScalar counterRoss_GLbox, counterWeddell_GLbox, counterEastAntarctica_GLbox, counterAmundsen_GLbox; // size of grounding line box
-  PetscScalar counter_GLbox[18];
-  PetscScalar counterRoss_CFbox, counterWeddell_CFbox, counterEastAntarctica_CFbox, counterAmundsen_CFbox; // size of ice front box
-  PetscScalar counter_CFbox[18];
-  PetscScalar  k_Ross, k_Weddell, k_EastAntarctica, k_Amundsen; // determines the number of cells accounting for the grounding line and ice front boxes //FIXME delete when possible
-  PetscScalar k[18];
+  static const int box_unidentified, box_noshelf, box_GL, box_near_GL, box_IF, maskfloating;
+  //PetscScalar counterRoss, counterWeddell, counterEastAntarctica, counterAmundsen; // size of each shelf
 
-  PetscScalar mean_salinity_Ross_GLbox, mean_salinity_Weddell_GLbox, mean_salinity_EastAntarctica_GLbox, mean_salinity_Amundsen_GLbox;
-  PetscScalar mean_salinity_GLbox_vector[5]; //FIXME 5 should be numberOfBasins later on
-  PetscScalar mean_meltrate_Ross_GLbox, mean_meltrate_Weddell_GLbox, mean_meltrate_EastAntarctica_GLbox, mean_meltrate_Amundsen_GLbox;
-  PetscScalar mean_meltrate_GLbox_vector[5]; //FIXME 5 should be numberOfBasins later on
-  PetscScalar mean_overturning_Ross_GLbox, mean_overturning_Weddell_GLbox, mean_overturning_EastAntarctica_GLbox, mean_overturning_Amundsen_GLbox;
-  PetscScalar mean_overturning_GLbox_vector[5]; //FIXME 5 should be numberOfBasins ĺater on
+  static const int numberOfBasins=5;
+  PetscScalar counter[numberOfBasins];
+  //PetscScalar counterRoss_init, counterWeddell_init, counterEastAntarctica_init, counterAmundsen_init; // initial size of each shelf
+  //PetscScalar counterRoss_GLbox, counterWeddell_GLbox, counterEastAntarctica_GLbox, counterAmundsen_GLbox; // size of grounding line box
+  PetscScalar counter_GLbox[numberOfBasins];
+  //PetscScalar counterRoss_CFbox, counterWeddell_CFbox, counterEastAntarctica_CFbox, counterAmundsen_CFbox; // size of ice front box
+  PetscScalar counter_CFbox[numberOfBasins];
+  //PetscScalar k_Ross, k_Weddell, k_EastAntarctica, k_Amundsen; // determines the number of cells accounting for the grounding line and ice front boxes //FIXME delete when possible
+  PetscScalar k_basins[numberOfBasins];
+
+  //PetscScalar mean_salinity_Ross_GLbox, mean_salinity_Weddell_GLbox, mean_salinity_EastAntarctica_GLbox, mean_salinity_Amundsen_GLbox;
+  PetscScalar mean_salinity_GLbox_vector[numberOfBasins]; //FIXME 5 should be numberOfBasins later on
+  //PetscScalar mean_meltrate_Ross_GLbox, mean_meltrate_Weddell_GLbox, mean_meltrate_EastAntarctica_GLbox, mean_meltrate_Amundsen_GLbox;
+  PetscScalar mean_meltrate_GLbox_vector[numberOfBasins]; //FIXME 5 should be numberOfBasins later on
+  //PetscScalar mean_overturning_Ross_GLbox, mean_overturning_Weddell_GLbox, mean_overturning_EastAntarctica_GLbox, mean_overturning_Amundsen_GLbox;
+  PetscScalar mean_overturning_GLbox_vector[numberOfBasins]; //FIXME 5 should be numberOfBasins ĺater on
 };
 
 #endif /* _POOCEANBOXMODEL_H_ */

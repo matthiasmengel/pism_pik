@@ -514,14 +514,14 @@ PetscErrorCode IceModel::massContExplicitStep() {
   PetscScalar factor = config.get("ice_density") * (dx * dy);
 
   //FIXME: This calls (again) the ocean and surface calculations, is this really needed? (Torsten)
-  if (surface != NULL) {
-    ierr = surface->ice_surface_mass_flux(acab); CHKERRQ(ierr);
-  } else { SETERRQ(grid.com, 1, "PISM ERROR: surface == NULL"); }
+  //if (surface != NULL) {
+  //   ierr = surface->ice_surface_mass_flux(acab); CHKERRQ(ierr);
+  //} else { SETERRQ(grid.com, 1, "PISM ERROR: surface == NULL"); }
 
-  if (ocean != NULL) {
-    ierr = ocean->shelf_base_temperature(shelfbtemp); CHKERRQ(ierr);//Torsten: not needed but called for consistency
-    ierr = ocean->shelf_base_mass_flux(shelfbmassflux); CHKERRQ(ierr);
-  } else { SETERRQ(grid.com, 2, "PISM ERROR: ocean == NULL"); }
+  //if (ocean != NULL) {
+  //  ierr = ocean->shelf_base_temperature(shelfbtemp); CHKERRQ(ierr);//Torsten: not needed but called for consistency
+  //  ierr = ocean->shelf_base_mass_flux(shelfbmassflux); CHKERRQ(ierr);
+  //} else { SETERRQ(grid.com, 2, "PISM ERROR: ocean == NULL"); }
   
   // const bool sub_gl = config.get_flag("sub_groundingline");
   // if (sub_gl){

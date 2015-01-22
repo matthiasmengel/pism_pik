@@ -315,12 +315,10 @@ PetscErrorCode IceModel::enthalpyAndDrainageStep(
     SETERRQ(grid.com, 4,"PISM ERROR: surface == PETSC_NULL");
   }
   if (ocean != PETSC_NULL) {
-    ierr = ocean->shelf_base_temperature(shelfbtemp);
-        CHKERRQ(ierr);
     ierr = ocean->shelf_base_mass_flux(shelfbmassflux);
         CHKERRQ(ierr);
-    //ierr = ocean->shelf_base_temperature(shelfbtemp);
-        //CHKERRQ(ierr);
+    ierr = ocean->shelf_base_temperature(shelfbtemp);
+        CHKERRQ(ierr);
   } else {
     SETERRQ(grid.com, 5,"PISM ERROR: ocean == PETSC_NULL");
   }

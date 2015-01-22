@@ -174,16 +174,6 @@ PetscErrorCode POoceanboxmodel::init(PISMVars &vars) {
   return 0;
 }
 
-PetscErrorCode POoceanboxmodel::update(PetscReal my_t, PetscReal my_dt) {
-  PetscErrorCode ierr = update_internal(my_t, my_dt); CHKERRQ(ierr);
-
-  ierr = temp.at_time(t); CHKERRQ(ierr);
-  ierr = mass_flux.at_time(t); CHKERRQ(ierr);
-
-
-  return 0;
-}
-
 const int POoceanboxmodel::shelf_unidentified = -99.0; // This should never show up in the .nc-files.
 const int POoceanboxmodel::noshelf = 0.0; // NOTE brauchen wir den noch? glaube nicht...
 
@@ -196,6 +186,32 @@ const int POoceanboxmodel::box_IF = 2.0;  // ocean box covering the rest of the 
 const int POoceanboxmodel::maskfloating = MASK_FLOATING;  // ocean box covering the rest of the ice shelf
 
 //const int POoceanboxmodel::numberOfBasins = 5; //FIXME: Is defined in the header for now
+
+PetscErrorCode POoceanboxmodel::update(PetscReal my_t, PetscReal my_dt) {
+  PetscErrorCode ierr = update_internal(my_t, my_dt); CHKERRQ(ierr);
+
+  ierr = temp.at_time(t); CHKERRQ(ierr);
+  ierr = mass_flux.at_time(t); CHKERRQ(ierr);
+
+  ierr = verbPrintf(2, grid.com,"A  : calculating shelf_base_temperature\n"); CHKERRQ(ierr);
+
+  ierr = AntarcticBasins(); CHKERRQ(ierr);
+  ierr = extentOfIceShelves(); CHKERRQ(ierr);
+  ierr = identifyGroundingLineBox(); CHKERRQ(ierr);
+  ierr = identifyIceFrontBox(); CHKERRQ(ierr);
+  ierr = oceanTemperature(); CHKERRQ(ierr);
+  ierr = Toc.copy_to(temp); CHKERRQ(ierr);
+
+  ierr = verbPrintf(2, grid.com,"B  : calculating shelf_base_mass_flux\n"); CHKERRQ(ierr);
+
+  //Assumes that mass flux is proportional to the shelf-base heat flux.
+  ierr = basalMeltRateForGroundingLineBox(); CHKERRQ(ierr);
+  ierr = basalMeltRateForIceFrontBox(); CHKERRQ(ierr); // TODO Diese Routinen woanders aufrufen (um Dopplung zu vermeiden)
+  ierr = basalMeltRateForOtherShelves(); CHKERRQ(ierr);
+  ierr = basalmeltrate_shelf.copy_to(mass_flux); CHKERRQ(ierr);
+
+  return 0;
+}
 
 
 //! Find all ice shelves in four pre-defined basins:
@@ -1136,15 +1152,7 @@ PetscErrorCode POoceanboxmodel::basalMeltRateForOtherShelves() {
 
 
 PetscErrorCode POoceanboxmodel::shelf_base_temperature(IceModelVec2S &result) {
-  PetscErrorCode ierr;
-  ierr = verbPrintf(2, grid.com,"A  : in shelf_base_temperature rountine\n"); CHKERRQ(ierr);
-  ierr = AntarcticBasins(); CHKERRQ(ierr);
-  ierr = extentOfIceShelves(); CHKERRQ(ierr);
-  ierr = identifyGroundingLineBox(); CHKERRQ(ierr);
-  ierr = identifyIceFrontBox(); CHKERRQ(ierr);
-  ierr = oceanTemperature(); CHKERRQ(ierr);
-  ierr = Toc.copy_to(result); CHKERRQ(ierr);
-
+  PetscErrorCode ierr = temp.copy_to(result); CHKERRQ(ierr);
   return 0;
 }
 
@@ -1153,13 +1161,7 @@ PetscErrorCode POoceanboxmodel::shelf_base_temperature(IceModelVec2S &result) {
  * Assumes that mass flux is proportional to the shelf-base heat flux.
  */
 PetscErrorCode POoceanboxmodel::shelf_base_mass_flux(IceModelVec2S &result) {
-  PetscErrorCode ierr;
-  ierr = verbPrintf(2, grid.com,"B  : in shelf_base_mass_flux rountine\n"); CHKERRQ(ierr);
-  ierr = basalMeltRateForGroundingLineBox(); CHKERRQ(ierr);
-  ierr = basalMeltRateForIceFrontBox(); CHKERRQ(ierr); // TODO Diese Routinen woanders aufrufen (um Dopplung zu vermeiden)
-  ierr = basalMeltRateForOtherShelves(); CHKERRQ(ierr);
-  ierr = basalmeltrate_shelf.copy_to(result); CHKERRQ(ierr);
-
+  PetscErrorCode ierr = mass_flux.copy_to(result); CHKERRQ(ierr);
   return 0;
 }
 
@@ -1180,5 +1182,6 @@ PetscErrorCode POoceanboxmodel::write_variables(set<string> vars, string filenam
   if (set_contains(vars, "overturning")) {  ierr = overturning.write(filename.c_str()); CHKERRQ(ierr); }
   if (set_contains(vars, "heatflux")) {  ierr = heatflux.write(filename.c_str()); CHKERRQ(ierr);  }
   if (set_contains(vars, "basalmeltrate_shelf")) { ierr = basalmeltrate_shelf.write(filename.c_str()); CHKERRQ(ierr); }
+
   return 0;
 }

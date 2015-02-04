@@ -62,6 +62,10 @@ public:
   virtual PetscErrorCode extentOfIceShelves();
   virtual PetscErrorCode identifyGroundingLineBox();
   virtual PetscErrorCode identifyIceFrontBox();
+  virtual PetscErrorCode extentOfIceShelves_ALTERNATIVE();
+  virtual PetscErrorCode identifyBOXMODELmask_ALTERNATIVE();
+  virtual PetscErrorCode extendGLBox_ALTERNATIVE();
+  virtual PetscErrorCode extendIFBox_ALTERNATIVE();
   virtual PetscErrorCode oceanTemperature();
   virtual PetscErrorCode basalMeltRateForGroundingLineBox();
   virtual PetscErrorCode basalMeltRateForIceFrontBox();
@@ -90,7 +94,8 @@ protected:
   PetscScalar counter[numberOfBasins],
               counter_GLbox[numberOfBasins],
               counter_CFbox[numberOfBasins],
-              k_basins[numberOfBasins];
+              k_basins[numberOfBasins],
+              counter_box_unidentified; //NEW
 
   PetscScalar mean_salinity_GLbox_vector[numberOfBasins],
               mean_meltrate_GLbox_vector[numberOfBasins],

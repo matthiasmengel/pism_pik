@@ -88,14 +88,14 @@ protected:
   Timeseries *delta_T;
 
   static const int shelf_unidentified, noshelf;
-  static const int box_unidentified, box_noshelf, box_GL, box_near_GL, box_IF, maskfloating;
+  static const int box_unidentified, box_noshelf, box_GL, box_near_GL, box_IF, maskfloating, maskocean;
   static const int numberOfBasins=18;
 
   PetscScalar counter[numberOfBasins],
               counter_GLbox[numberOfBasins],
               counter_CFbox[numberOfBasins],
               k_basins[numberOfBasins],
-              counter_box_unidentified; //NEW
+              counter_box_unidentified; 
 
   PetscScalar mean_salinity_GLbox_vector[numberOfBasins],
               mean_meltrate_GLbox_vector[numberOfBasins],

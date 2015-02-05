@@ -184,6 +184,7 @@ const int POoceanboxmodel::box_GL = 1.0;  // ocean box covering the grounding li
 const int POoceanboxmodel::box_IF = 2.0;  // ocean box covering the rest of the ice shelf
 
 const int POoceanboxmodel::maskfloating = MASK_FLOATING;  // ocean box covering the rest of the ice shelf
+const int POoceanboxmodel::maskocean = 4; //FIXME is there something similar to MASK_FLOATING?
 
 //const int POoceanboxmodel::numberOfBasins = 5; //FIXME: Is defined in the header for now
 
@@ -196,11 +197,11 @@ PetscErrorCode POoceanboxmodel::update(PetscReal my_t, PetscReal my_dt) {
   ierr = verbPrintf(2, grid.com,"A  : calculating shelf_base_temperature\n"); CHKERRQ(ierr);
 
   ierr = AntarcticBasins(); CHKERRQ(ierr);
-  //ierr = extentOfIceShelves(); CHKERRQ(ierr); call instead:
-  ierr = extentOfIceShelves_ALTERNATIVE(); CHKERRQ(ierr);
-  ierr = identifyBOXMODELmask_ALTERNATIVE(); CHKERRQ(ierr);
-  ierr = identifyGroundingLineBox(); CHKERRQ(ierr);
-  ierr = identifyIceFrontBox(); CHKERRQ(ierr);
+  ierr = extentOfIceShelves_ALTERNATIVE(); CHKERRQ(ierr); //new routine
+  ierr = identifyBOXMODELmask_ALTERNATIVE(); CHKERRQ(ierr); //new routine
+  //ierr = extentOfIceShelves(); CHKERRQ(ierr); //old routine
+  //ierr = identifyGroundingLineBox(); CHKERRQ(ierr); //old routine
+  //ierr = identifyIceFrontBox(); CHKERRQ(ierr); //old routine
   ierr = oceanTemperature(); CHKERRQ(ierr);
   ierr = Toc.copy_to(temp); CHKERRQ(ierr);
 
@@ -562,7 +563,8 @@ PetscErrorCode POoceanboxmodel::identifyIceFrontBox() {
     ierr = PISMGlobalSum(&lcounter_CFbox[i], &counter_CFbox[i], grid.com); CHKERRQ(ierr);
     counter_GLbox[i]=counter[i]-counter_CFbox[i];
   } 
-
+  for(int i=0;i<numberOfBasins;i++){ ierr = verbPrintf(2, grid.com,"A1b_ALTERNATIVE: counter[i] = %f, counter_CFbox= %f, counter_GLbox = %f\n", counter[i], counter_CFbox[i], counter_GLbox[i]); CHKERRQ(ierr);}
+  
   return 0;
 }
 
@@ -572,23 +574,23 @@ PetscErrorCode POoceanboxmodel::identifyIceFrontBox() {
 /* START ALTERNATIVE COMPUTATION OF THE BOXMODELmask */ 
 
 
-//! Compute the extent of each ice shelf
+//! Compute the extent of the ice shelves of each basin/region (i.e. counter)
+/*  Start to fill in the BOXMODELmask: -identify the boxes directly at the groundingline
+                                       -identify the boxes directly at the calving front 
+                                       -Set all other shelf_boxes to shelf_unidentified*/
 PetscErrorCode POoceanboxmodel::extentOfIceShelves_ALTERNATIVE() {
-  /* IN THIS ROUTINE 
-     For each basin: compute the extent=amount of shelf-cells in this basin (variable called counter)
-     Start to fill in the BOXMODELmask: -identify the boxes directly at the groundingline.
-                                        -identify the boxes directly at the shelf front 
-                                        -Set all other shelf_boxes to shelf_unidentified and all other cells to no_shelf. 
-  Ideas/Todos: compute the number of unidentified cells!, change maskocean as maskfloating */
-
+  
   PetscErrorCode ierr;
   ierr = verbPrintf(2, grid.com,"A1a_ALTERNATIVE: in extent of ice shelves rountine\n"); CHKERRQ(ierr);
 
-  PetscScalar maskocean = 4; //FIXME is this correct? Then proceed as with maskfloating...
-  PetscScalar lcounter_box_unidentified = 0; 
+  PetscScalar lcounter_box_unidentified = 0; //count the total amount of unidentified shelf boxes.
   PetscScalar lcounter[numberOfBasins];
-  for(int i=0;i<numberOfBasins;i++){ lcounter[i]=0.0; }
-
+  PetscScalar lcounter_CFbox[numberOfBasins];
+  PetscScalar lcounter_GLbox[numberOfBasins];
+  for (int i=0;i<numberOfBasins;i++){ lcounter[i]=0.0; }
+  for (int i=0;i<numberOfBasins;i++){ lcounter_CFbox[i]=0.0;}
+  for (int i=0;i<numberOfBasins;i++){ lcounter_GLbox[i]=0.0;}
+  
   ierr = DRAINAGEmask.begin_access();   CHKERRQ(ierr);
   ierr = mask->begin_access();   CHKERRQ(ierr); 
   ierr = BOXMODELmask.begin_access(); CHKERRQ(ierr);
@@ -603,19 +605,18 @@ PetscErrorCode POoceanboxmodel::extentOfIceShelves_ALTERNATIVE() {
             (*mask)(i+1,j)<maskfloating || (*mask)(i-1,j)<maskfloating || 
             (*mask)(i+1,j+1)<maskfloating || (*mask)(i+1,j-1)<maskfloating ||
             (*mask)(i-1,j+1)<maskfloating || (*mask)(i-1,j-1)<maskfloating ) { // i.e. there is a grounded neighboring cell
-          BOXMODELmask(i,j) = box_GL;
+            BOXMODELmask(i,j) = box_GL;
+            lcounter_GLbox[static_cast<int>(round(DRAINAGEmask(i,j)))]++;
         } else if ((*mask)(i,j+1)==maskocean || (*mask)(i,j-1)==maskocean || 
             (*mask)(i+1,j)==maskocean || (*mask)(i-1,j)==maskocean || 
             (*mask)(i+1,j+1)==maskocean || (*mask)(i+1,j-1)==maskocean ||
             (*mask)(i-1,j+1)==maskocean || (*mask)(i-1,j-1)==maskocean ){ // i.e. there is an ocean neighboring cell 
-          BOXMODELmask(i,j) = box_IF;
-          //ierr = verbPrintf(2, grid.com,"This box is at the shelf front: i=%d, j=%d, BOXMODELmask=%f\n", i,j, BOXMODELmask(i,j)); CHKERRQ(ierr);
-        } else { // i.e., all other floating boxes
-          BOXMODELmask(i,j) = box_unidentified;
-          lcounter_box_unidentified++;
-          //ierr = verbPrintf(2, grid.com,"This box is unidentified: i=%d, j=%d, BOXMODELmask=%f\n", i,j, BOXMODELmask(i,j)); CHKERRQ(ierr);
-          //ierr = verbPrintf(2, grid.com,"This is the lcounter =%f\n", i,j, lcounter_box_unidentified); CHKERRQ(ierr);
-        }
+            BOXMODELmask(i,j) = box_IF;
+            lcounter_CFbox[static_cast<int>(round(DRAINAGEmask(i,j)))]++;
+		    } else { // i.e., all other floating boxes
+            BOXMODELmask(i,j) = box_unidentified;
+            lcounter_box_unidentified++;
+		    }
 
       }else{ // i.e., not floating
         BOXMODELmask(i,j) = box_noshelf;
@@ -623,92 +624,134 @@ PetscErrorCode POoceanboxmodel::extentOfIceShelves_ALTERNATIVE() {
     }
   }
 
-  ierr = verbPrintf(2, grid.com,"This box is at the shelf front: i=%d, j=%d, BOXMODELmask=%f\n", 183,83, BOXMODELmask(183,83)); CHKERRQ(ierr);
-  ierr = verbPrintf(2, grid.com,"basin of this box=%f\n", DRAINAGEmask(183,83)); CHKERRQ(ierr);
+  //ierr = verbPrintf(2, grid.com,"This box is at the shelf front: i=%d, j=%d, BOXMODELmask=%f, basin =%f\n", 183,83, BOXMODELmask(183,83), DRAINAGEmask(183,83)); CHKERRQ(ierr);
 
   ierr = DRAINAGEmask.end_access();   CHKERRQ(ierr);
   ierr = mask->end_access();   CHKERRQ(ierr); 
   ierr = BOXMODELmask.end_access(); CHKERRQ(ierr);
   
-  for (int i; i<numberOfBasins;i++) { 
-    ierr = PISMGlobalSum(&lcounter[i], &counter[i], grid.com); CHKERRQ(ierr);}
   ierr = PISMGlobalSum(&lcounter_box_unidentified, &counter_box_unidentified, grid.com); CHKERRQ(ierr);
-  //ierr = verbPrintf(2, grid.com,"counter[4]=%f\n", counter[4]); CHKERRQ(ierr);
-  //ierr = verbPrintf(2, grid.com,"counter_box_unidentified=%f\n", counter_box_unidentified); CHKERRQ(ierr);
+  for(int i=0;i<numberOfBasins;i++) {
+  	ierr = PISMGlobalSum(&lcounter[i], &counter[i], grid.com); CHKERRQ(ierr);
+    ierr = PISMGlobalSum(&lcounter_CFbox[i], &counter_CFbox[i], grid.com); CHKERRQ(ierr);
+    ierr = PISMGlobalSum(&lcounter_GLbox[i], &counter_GLbox[i], grid.com); CHKERRQ(ierr);
+  } 
   return 0;
 }
 
+
+
 //! extent the grouningline box with neighboring unidentified shelf cells
 PetscErrorCode POoceanboxmodel::extendGLBox_ALTERNATIVE() {
-  /* IN THIS ROUTINE 
-      */
-
+  
   PetscErrorCode ierr;
-  // while there is a box with BOXMODELmask==shelf_unidentified: call two functions...
-  ierr = verbPrintf(2, grid.com,"A1b1_ALTERNATIVE: in extend GL_Box rountine\n"); CHKERRQ(ierr);
+  //ierr = verbPrintf(2, grid.com,"A1b1_ALTERNATIVE: in extend GL_Box rountine\n"); CHKERRQ(ierr);
+
+  PetscScalar lcounter_box_unidentified = counter_box_unidentified; // FIXME muss man das so kompliziert machen? Geht auch einfach counter_box_unidentified--?
+  PetscScalar lcounter_GLbox[numberOfBasins];
+  for (int i=0;i<numberOfBasins;i++){ lcounter_GLbox[i]=counter_GLbox[i];}
+
+  ierr = DRAINAGEmask.begin_access();   CHKERRQ(ierr);
+  ierr = mask->begin_access();   CHKERRQ(ierr); 
+  ierr = BOXMODELmask.begin_access(); CHKERRQ(ierr);
+
+  for (PetscInt i=grid.xs; i<grid.xs+grid.xm; ++i) {
+    for (PetscInt j=grid.ys; j<grid.ys+grid.ym; ++j) {
+      if (BOXMODELmask(i,j)==box_unidentified && 
+      	  (BOXMODELmask(i,j+1)==box_GL || BOXMODELmask(i,j-1)==box_GL || 
+           BOXMODELmask(i+1,j)==box_GL || BOXMODELmask(i-1,j)==box_GL // || BOXMODELmask(i+1,j+1)==box_GL || BOXMODELmask(i+1,j-1)==box_GL || BOXMODELmask(i-1,j+1)==box_GL || BOXMODELmask(i-1,j-1)==box_GL
+          ) ){ // i.e. this is an unidentified shelf cell with a neighbor that is in the GLbox
+      	  BOXMODELmask(i,j)=box_near_GL;  
+      }
+    }
+  }
+
+  for (PetscInt i=grid.xs; i<grid.xs+grid.xm; ++i) {
+    for (PetscInt j=grid.ys; j<grid.ys+grid.ym; ++j) {
+      if (BOXMODELmask(i,j)==box_near_GL){ 
+      	  BOXMODELmask(i,j)=box_GL;
+      	  lcounter_box_unidentified--; 
+          lcounter_GLbox[static_cast<int>(round(DRAINAGEmask(i,j)))]++;
+      }
+    }
+  }
+
+  ierr = DRAINAGEmask.end_access();   CHKERRQ(ierr);
+  ierr = mask->end_access();   CHKERRQ(ierr); 
+  ierr = BOXMODELmask.end_access(); CHKERRQ(ierr);
+  
+  ierr = PISMGlobalSum(&lcounter_box_unidentified, &counter_box_unidentified, grid.com); CHKERRQ(ierr);
+  for(int i=0;i<numberOfBasins;i++) { ierr = PISMGlobalSum(&lcounter_GLbox[i], &counter_GLbox[i], grid.com); CHKERRQ(ierr);} 
+  
+  return 0;
+}
+
+
+
+//! extend the ice_front box with neighboring unidentified shelf cells.
+PetscErrorCode POoceanboxmodel::extendIFBox_ALTERNATIVE() {
+  
+  PetscErrorCode ierr;
+  //ierr = verbPrintf(2, grid.com,"A1b2_ALTERNATIVE: in extend IF_Box rountine\n"); CHKERRQ(ierr);
+
+  PetscScalar lcounter_box_unidentified = counter_box_unidentified; // FIXME muss man das so kompliziert machen? Geht auch einfach counter_box_unidentified--?
+  PetscScalar lcounter_CFbox[numberOfBasins];
+  for (int i=0;i<numberOfBasins;i++){ lcounter_CFbox[i]=counter_CFbox[i];}
 
   ierr = DRAINAGEmask.begin_access();   CHKERRQ(ierr);
   ierr = mask->begin_access();   CHKERRQ(ierr); 
   ierr = BOXMODELmask.begin_access(); CHKERRQ(ierr);
   
-  /*for (i,j) in grid:
-    if BOXMODELmask(i,j) == unidentified and there is a neighbor with BOXMODELmask == GL_box{
-      BOXMODELmask(i,j) = near_GL_box
+  for (PetscInt i=grid.xs; i<grid.xs+grid.xm; ++i) {
+    for (PetscInt j=grid.ys; j<grid.ys+grid.ym; ++j) {
+      if (BOXMODELmask(i,j)==box_unidentified && 
+      	  (BOXMODELmask(i,j+1)==box_IF || BOXMODELmask(i,j-1)==box_IF || 
+           BOXMODELmask(i+1,j)==box_IF || BOXMODELmask(i-1,j)==box_IF  // || BOXMODELmask(i+1,j+1)==box_IF || BOXMODELmask(i+1,j-1)==box_IF || //FIXME eight neigbors?BOXMODELmask(i-1,j+1)==box_IF || BOXMODELmask(i-1,j-1)==box_IF
+          ) ){ // i.e. this is an unidentified shelf cell with a neighbor that is in the IFbox
+      	  BOXMODELmask(i,j)=box_near_GL;   //NOTE a better name would be box_near_CF, but this variable is not necessary
+      }
     }
+  }
 
-    for(i,j):{
-      if BOXMODELmask(i,j))== near_GL :{BOXMODELmask =GL_box, counter_shelf_unidentified --}
+  for (PetscInt i=grid.xs; i<grid.xs+grid.xm; ++i) {
+    for (PetscInt j=grid.ys; j<grid.ys+grid.ym; ++j) {
+      if (BOXMODELmask(i,j)==box_near_GL){ 
+      	  BOXMODELmask(i,j)=box_IF; 
+      	  lcounter_box_unidentified--; 
+          lcounter_CFbox[static_cast<int>(round(DRAINAGEmask(i,j)))]++;
+      }
     }
-  */
-
+  }
 
   ierr = DRAINAGEmask.end_access();   CHKERRQ(ierr);
   ierr = mask->end_access();   CHKERRQ(ierr); 
   ierr = BOXMODELmask.end_access(); CHKERRQ(ierr);
+  
+  ierr = PISMGlobalSum(&lcounter_box_unidentified, &counter_box_unidentified, grid.com); CHKERRQ(ierr);
+  for(int i=0;i<numberOfBasins;i++) { ierr = PISMGlobalSum(&lcounter_CFbox[i], &counter_CFbox[i], grid.com); CHKERRQ(ierr); } 
 
-
-  return 0;
-}
-
-//! extend the ice_front box with neighboring unidentified shelf cells.
-PetscErrorCode POoceanboxmodel::extendIFBox_ALTERNATIVE() {
-  //copy from extendGLBox
-  //compute the size of the ice front boxes for each region!
   return 0;
 }
 
 
 //! Compute the boxmodelmask, calculate the extent of each box in each region
 PetscErrorCode POoceanboxmodel::identifyBOXMODELmask_ALTERNATIVE() {
-  /* IN THIS ROUTINE 
-      */
 
   PetscErrorCode ierr;
-  // while there is a box with BOXMODELmask==shelf_unidentified: call two functions...
-  ierr = verbPrintf(2, grid.com,"A1b_ALTERNATIVE: in identify boxmodel mask rountine\n"); CHKERRQ(ierr);
 
-  ierr = DRAINAGEmask.begin_access();   CHKERRQ(ierr);
-  ierr = mask->begin_access();   CHKERRQ(ierr); 
-  ierr = BOXMODELmask.begin_access(); CHKERRQ(ierr);
+  ierr = verbPrintf(2, grid.com,"A1b_ALTERNATIVE: in identify boxmodel mask rountine\n"); CHKERRQ(ierr);
   
-  //INSERT:
-  //while(counter_unidentified > 0){ //INTRODUCE the counter as a globale variable, compute the counter in the rountine before: number of unidentified shelf_cells.
-      //call routines : 1*extend_GL_box, 2*extend_IF_box.
-      //NOTE those routines should change counter_unidentified!!!
-  //}
   while(counter_box_unidentified > 0.0){
+  	  ierr = extendIFBox_ALTERNATIVE(); CHKERRQ(ierr);
+      ierr = extendIFBox_ALTERNATIVE(); CHKERRQ(ierr);
+      ierr = extendIFBox_ALTERNATIVE(); CHKERRQ(ierr);
+      ierr = extendIFBox_ALTERNATIVE(); CHKERRQ(ierr);
+      ierr = extendIFBox_ALTERNATIVE(); CHKERRQ(ierr);
+      ierr = extendIFBox_ALTERNATIVE(); CHKERRQ(ierr);
       ierr = extendGLBox_ALTERNATIVE(); CHKERRQ(ierr); //FIXME which order?
-      ierr = extendIFBox_ALTERNATIVE(); CHKERRQ(ierr);
-      ierr = extendIFBox_ALTERNATIVE(); CHKERRQ(ierr);
-      //ABBRUCH??? checke ob das funktioniert!
-      counter_box_unidentified--; //DELTE THIS....
   }
 
-  ierr = DRAINAGEmask.end_access();   CHKERRQ(ierr);
-  ierr = mask->end_access();   CHKERRQ(ierr); 
-  ierr = BOXMODELmask.end_access(); CHKERRQ(ierr);
-
-  //TODO compute the sizes of each box for each region!
+  //for(int i=0;i<numberOfBasins;i++){ ierr = verbPrintf(2, grid.com,"A1b_ALTERNATIVE: counter[i] = %f, counter_CFbox= %f, counter_GLbox = %f\n", counter[i], counter_CFbox[i], counter_GLbox[i]); CHKERRQ(ierr);}
   return 0;
 }
 

@@ -587,9 +587,11 @@ PetscErrorCode POoceanboxmodel::extentOfIceShelves_ALTERNATIVE() {
   PetscScalar lcounter[numberOfBasins];
   PetscScalar lcounter_CFbox[numberOfBasins];
   PetscScalar lcounter_GLbox[numberOfBasins];
-  for (int i=0;i<numberOfBasins;i++){ lcounter[i]=0.0; }
-  for (int i=0;i<numberOfBasins;i++){ lcounter_CFbox[i]=0.0;}
-  for (int i=0;i<numberOfBasins;i++){ lcounter_GLbox[i]=0.0;}
+  for (int i=0;i<numberOfBasins;i++){ 
+    lcounter[i]=0.0; 
+    lcounter_CFbox[i]=0.0;
+    lcounter_GLbox[i]=0.0;
+  }
   
   ierr = DRAINAGEmask.begin_access();   CHKERRQ(ierr);
   ierr = mask->begin_access();   CHKERRQ(ierr); 

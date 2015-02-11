@@ -58,23 +58,19 @@ public:
     result = sea_level;
     return 0;
   }
-  virtual PetscErrorCode AntarcticBasins();
   virtual PetscErrorCode extentOfIceShelves();
-  virtual PetscErrorCode identifyGroundingLineBox();
-  virtual PetscErrorCode identifyIceFrontBox();
-  virtual PetscErrorCode extentOfIceShelves_ALTERNATIVE();
-  virtual PetscErrorCode identifyBOXMODELmask_ALTERNATIVE();
-  virtual PetscErrorCode extendGLBox_ALTERNATIVE();
-  virtual PetscErrorCode extendIFBox_ALTERNATIVE();
+  virtual PetscErrorCode identifyBOXMODELmask();
+  virtual PetscErrorCode extendGLBox();
+  virtual PetscErrorCode extendIFBox();
   virtual PetscErrorCode oceanTemperature();
   virtual PetscErrorCode basalMeltRateForGroundingLineBox();
   virtual PetscErrorCode basalMeltRateForIceFrontBox();
   virtual PetscErrorCode basalMeltRateForOtherShelves();
 
-   virtual PetscErrorCode shelf_base_temperature(IceModelVec2S &result);
-   virtual PetscErrorCode shelf_base_mass_flux(IceModelVec2S &result);
+  virtual PetscErrorCode shelf_base_temperature(IceModelVec2S &result);
+  virtual PetscErrorCode shelf_base_mass_flux(IceModelVec2S &result);
 
-   virtual PetscErrorCode write_variables(set<string> vars, string filename); // FIXME included by Ronja to write the variables to extra files. Is there a smarter way?
+  virtual PetscErrorCode write_variables(set<string> vars, string filename); // FIXME included by Ronja to write the variables to extra files. Is there a smarter way?
 
 protected:
   IceModelVec2S *ice_thickness, *topg, *lat, *lon, *basins;	// not owned by this class
@@ -83,12 +79,12 @@ protected:
 
   IceModelVec2S BOXMODELmask, DRAINAGEmask, Soc, Soc_base, Toc, Toc_base, Toc_inCelsius, T_star, Toc_anomaly, overturning, heatflux, basalmeltrate_shelf;
 
-  bool ocean_oceanboxmodel_deltaT_set, drainageBasins_set;
+  bool ocean_oceanboxmodel_deltaT_set, drainageBasins_set, drainageBasins_OH10_set;
 
   Timeseries *delta_T;
 
   static const int shelf_unidentified, noshelf;
-  static const int box_unidentified, box_noshelf, box_GL, box_near_GL, box_IF, maskfloating, maskocean;
+  static const int box_unidentified, box_noshelf, box_GL, box_neighboring, box_IF, maskfloating, maskocean;
   static const int numberOfBasins=18;
 
   PetscScalar counter[numberOfBasins],
@@ -101,11 +97,10 @@ protected:
               mean_meltrate_GLbox_vector[numberOfBasins],
               mean_overturning_GLbox_vector[numberOfBasins]; 
 
-  PetscScalar LengthInitial[numberOfBasins],
-              Toc_base_correction[numberOfBasins],
-              Soc_base_value[numberOfBasins],
-              gamma_T_star_vector[numberOfBasins],
-              C_vector[numberOfBasins];
+  PetscScalar Toc_base_vec[numberOfBasins],
+              Soc_base_vec[numberOfBasins],
+              gamma_T_star_vec[numberOfBasins],
+              C_vec[numberOfBasins];
 
 };
 

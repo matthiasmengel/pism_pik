@@ -147,14 +147,33 @@ PetscErrorCode POoceanboxmodel::init(PISMVars &vars) {
   PetscReal value_C = 5e6;
   ierr = PISMOptionsReal("-value_C","-value_C",value_C, value_C_set); CHKERRQ(ierr);
 
+  //set number of basins per option
+  bool number_of_basins_set;
+  numberOfBasins = 18;
+  ierr = PISMOptionsInt("-number_of_basins","Number of Drainage Basins",numberOfBasins, number_of_basins_set); CHKERRQ(ierr);
+
+  Toc_base_vec.resize(numberOfBasins);
+  Soc_base_vec.resize(numberOfBasins);
+  gamma_T_star_vec.resize(numberOfBasins);
+  C_vec.resize(numberOfBasins);
+
+  counter.resize(numberOfBasins);
+  counter_GLbox.resize(numberOfBasins);
+  counter_CFbox.resize(numberOfBasins);
+  k_basins.resize(numberOfBasins);;
+
+  mean_salinity_GLbox_vector.resize(numberOfBasins);
+  mean_meltrate_GLbox_vector.resize(numberOfBasins);
+  mean_overturning_GLbox_vector.resize(numberOfBasins);
+
 
   //oceanTemperature()  
-  const PetscScalar Toc_base_vec_OH10[numberOfBasins]={0.0, -1.8344, -1.8344, -1.8344, -1.8344, -1.8344, -1.8344, -1.8344, -1.8475, 0.8427, 0.8427, 0.8427, 0.8427, 0.8427, -1.8464, -1.8464, -1.8464, -1.8464};  // degree Celsius
-  const PetscScalar Soc_base_vec_OH10[numberOfBasins]={0.0,34.55,34.55,34.55,34.55,34.55,34.55,34.55, 34.83, 34.67,34.67,34.67,34.67,34.67, 34.74,34.74,34.74,34.74}; // psu
+  const PetscScalar Toc_base_vec_OH10[18]={0.0, -1.8344, -1.8344, -1.8344, -1.8344, -1.8344, -1.8344, -1.8344, -1.8475, 0.8427, 0.8427, 0.8427, 0.8427, 0.8427, -1.8464, -1.8464, -1.8464, -1.8464};  // degree Celsius
+  const PetscScalar Soc_base_vec_OH10[18]={0.0,34.55,34.55,34.55,34.55,34.55,34.55,34.55, 34.83, 34.67,34.67,34.67,34.67,34.67, 34.74,34.74,34.74,34.74}; // psu
 
   //basalMeltRateForGroundingLineBox() 
-  const PetscScalar gamma_T_star_vec_OH10[numberOfBasins]={0.0, 1.12915e-06, 1.12915e-06,1.12915e-06,1.12915e-06,1.12915e-06,1.12915e-06,1.12915e-06, 4.5080e-07, 1.78144e-05,1.78144e-05,1.78144e-05,1.78144e-05,1.78144e-05, 1.40532e-06,1.40532e-06,1.40532e-06,1.40532e-06};// meter per second
-  const PetscScalar C_vec_OH10[numberOfBasins]={0.0, 8e6,8e6,8e6,8e6,8e6,8e6,8e6, 10e6, 3e6,3e6,3e6,3e6,3e6, 2e6,2e6,2e6,2e6}; //unitless
+  const PetscScalar gamma_T_star_vec_OH10[18]={0.0, 1.12915e-06, 1.12915e-06,1.12915e-06,1.12915e-06,1.12915e-06,1.12915e-06,1.12915e-06, 4.5080e-07, 1.78144e-05,1.78144e-05,1.78144e-05,1.78144e-05,1.78144e-05, 1.40532e-06,1.40532e-06,1.40532e-06,1.40532e-06};// meter per second
+  const PetscScalar C_vec_OH10[18]={0.0, 8e6,8e6,8e6,8e6,8e6,8e6,8e6, 10e6, 3e6,3e6,3e6,3e6,3e6, 2e6,2e6,2e6,2e6}; //unitless
   //basalMeltRateForIceFrontBox() 
   //const PetscScalar gamma_T_star_vec[numberOfBasins]
 

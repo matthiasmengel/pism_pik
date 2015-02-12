@@ -85,22 +85,23 @@ protected:
 
   static const int shelf_unidentified, noshelf;
   static const int box_unidentified, box_noshelf, box_GL, box_neighboring, box_IF, maskfloating, maskocean;
-  static const int numberOfBasins=18;
 
-  PetscScalar counter[numberOfBasins],
-              counter_GLbox[numberOfBasins],
-              counter_CFbox[numberOfBasins],
-              k_basins[numberOfBasins],
-              counter_box_unidentified; 
+  PetscInt numberOfBasins;
 
-  PetscScalar mean_salinity_GLbox_vector[numberOfBasins],
-              mean_meltrate_GLbox_vector[numberOfBasins],
-              mean_overturning_GLbox_vector[numberOfBasins]; 
+  vector<double>  counter,
+                  counter_GLbox,
+                  counter_CFbox,
+                  k_basins;
+  PetscScalar     counter_box_unidentified; 
 
-  PetscScalar Toc_base_vec[numberOfBasins],
-              Soc_base_vec[numberOfBasins],
-              gamma_T_star_vec[numberOfBasins],
-              C_vec[numberOfBasins];
+  vector<double>  mean_salinity_GLbox_vector,
+                  mean_meltrate_GLbox_vector,
+                  mean_overturning_GLbox_vector; 
+
+  vector<double>  Toc_base_vec,
+                  Soc_base_vec,
+                  gamma_T_star_vec,
+                  C_vec;
 
 };
 

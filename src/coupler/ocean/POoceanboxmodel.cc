@@ -139,6 +139,15 @@ PetscErrorCode POoceanboxmodel::init(PISMVars &vars) {
   }
 
 
+  bool gamma_T_set;
+  PetscReal gamma_T = 1e-6;
+  ierr = PISMOptionsReal("-gamma_T","-gamma_T",gamma_T, gamma_T_set); CHKERRQ(ierr);
+
+  bool value_C_set;
+  PetscReal value_C = 5e6;
+  ierr = PISMOptionsReal("-value_C","-value_C",value_C, value_C_set); CHKERRQ(ierr);
+
+
   //oceanTemperature()  
   const PetscScalar Toc_base_vec_OH10[numberOfBasins]={0.0, -1.8344, -1.8344, -1.8344, -1.8344, -1.8344, -1.8344, -1.8344, -1.8475, 0.8427, 0.8427, 0.8427, 0.8427, 0.8427, -1.8464, -1.8464, -1.8464, -1.8464};  // degree Celsius
   const PetscScalar Soc_base_vec_OH10[numberOfBasins]={0.0,34.55,34.55,34.55,34.55,34.55,34.55,34.55, 34.83, 34.67,34.67,34.67,34.67,34.67, 34.74,34.74,34.74,34.74}; // psu
@@ -155,7 +164,7 @@ PetscErrorCode POoceanboxmodel::init(PISMVars &vars) {
   
   for(int i=0;i<numberOfBasins;i++) {
     if (drainageBasins_OH10_set) {       //make use of parameters for ROSS, WEDDELL etc. 
-      if(i==1) {
+      if(i==0) {
         ierr = verbPrintf(2, grid.com,"Using original Olbers Hellmer 2010 Drainage Basins...\n "); CHKERRQ(ierr);
       }
       if (numberOfBasins == 18) {// FIXME Zahl noch mal checken!
@@ -172,8 +181,8 @@ PetscErrorCode POoceanboxmodel::init(PISMVars &vars) {
 
       Toc_base_vec[i]= -1.5; //FIXME read from file, mean over ocean values in front of basin
       Soc_base_vec[i]     = 34.5;
-      gamma_T_star_vec[i]= 1e-6;
-      C_vec[i]           = 5e6;
+      gamma_T_star_vec[i]= gamma_T;
+      C_vec[i]           = value_C;
       if(i==1){
         ierr = verbPrintf(2, grid.com,"Using %d drainage basins and default values: Toc = %f, Soc = %f, gamma_T_star= %f, C = %f...\n ", numberOfBasins,Toc_base_vec[i], Soc_base_vec[i], gamma_T_star_vec[i], C_vec[i]  ); CHKERRQ(ierr);       
       }
@@ -181,7 +190,7 @@ PetscErrorCode POoceanboxmodel::init(PISMVars &vars) {
       Toc_base_vec[i] = -1.9; 
       Soc_base_vec[i] = 34.67;
       gamma_T_star_vec[i]=  6.0616e-6; 
-      C_vec[i]           = 5e6;  
+      C_vec[i]           = value_C;  
       if (i==1) {
         ierr = verbPrintf(2, grid.com,"Using %d drainage basins and default values: Toc = %f, Soc = %f, gamma_T_star= %f, C = %f...\n ", numberOfBasins,Toc_base_vec[i], Soc_base_vec[i], gamma_T_star_vec[i], C_vec[i]  ); CHKERRQ(ierr); 
       }

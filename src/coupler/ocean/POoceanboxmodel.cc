@@ -338,9 +338,11 @@ PetscErrorCode POoceanboxmodel::extentOfIceShelves() {
 PetscErrorCode POoceanboxmodel::extendGLBox() {
   PetscErrorCode ierr;
 
-  PetscScalar lcounter_box_unidentified = counter_box_unidentified; 
+  PetscScalar lcounter_box_unidentified = 0.0; 
+  PetscScalar all_counter_box_unidentified = 0.0;
   PetscScalar lcounter_GLbox[numberOfBasins];
-  for (int i=0;i<numberOfBasins;i++){ lcounter_GLbox[i]=counter_GLbox[i];}
+  PetscScalar all_counter_GLbox[numberOfBasins];
+  for (int i=0;i<numberOfBasins;i++){ lcounter_GLbox[i]=0.0; all_counter_GLbox[i]=0.0; }; 
 
   ierr = DRAINAGEmask.begin_access();   CHKERRQ(ierr);
   ierr = mask->begin_access();   CHKERRQ(ierr); 
@@ -361,7 +363,7 @@ PetscErrorCode POoceanboxmodel::extendGLBox() {
     for (PetscInt j=grid.ys; j<grid.ys+grid.ym; ++j) {
       if (BOXMODELmask(i,j)==box_neighboring){ 
       	  BOXMODELmask(i,j)=box_GL;
-      	  lcounter_box_unidentified--; 
+      	  lcounter_box_unidentified++; 
           lcounter_GLbox[static_cast<int>(round(DRAINAGEmask(i,j)))]++;
       }
     }
@@ -370,10 +372,17 @@ PetscErrorCode POoceanboxmodel::extendGLBox() {
   ierr = DRAINAGEmask.end_access();   CHKERRQ(ierr);
   ierr = mask->end_access();   CHKERRQ(ierr); 
   ierr = BOXMODELmask.end_access(); CHKERRQ(ierr);
+  ierr = BOXMODELmask.beginGhostComm(); CHKERRQ(ierr);
+  ierr = BOXMODELmask.endGhostComm(); CHKERRQ(ierr);
   
-  ierr = PISMGlobalSum(&lcounter_box_unidentified, &counter_box_unidentified, grid.com); CHKERRQ(ierr);
-  for(int i=0;i<numberOfBasins;i++) { ierr = PISMGlobalSum(&lcounter_GLbox[i], &counter_GLbox[i], grid.com); CHKERRQ(ierr);} 
-  
+  ierr = PISMGlobalSum(&lcounter_box_unidentified, &all_counter_box_unidentified, grid.com); CHKERRQ(ierr);
+  counter_box_unidentified -= all_counter_box_unidentified;
+
+  for(int i=0;i<numberOfBasins;i++) { 
+    ierr = PISMGlobalSum(&lcounter_GLbox[i], &all_counter_GLbox[i], grid.com); CHKERRQ(ierr);
+    counter_GLbox[i] += all_counter_GLbox[i];
+  } 
+
   return 0;
 }
 
@@ -384,9 +393,11 @@ PetscErrorCode POoceanboxmodel::extendIFBox() {
   
   PetscErrorCode ierr;
 
-  PetscScalar lcounter_box_unidentified = counter_box_unidentified;
+  PetscScalar lcounter_box_unidentified = 0.0; 
+  PetscScalar all_counter_box_unidentified = 0.0;
   PetscScalar lcounter_CFbox[numberOfBasins];
-  for (int i=0;i<numberOfBasins;i++){ lcounter_CFbox[i]=counter_CFbox[i];}
+  PetscScalar all_counter_CFbox[numberOfBasins];
+  for (int i=0;i<numberOfBasins;i++){ lcounter_CFbox[i] = 0.0; all_counter_CFbox[i] = 0.0;}
 
   ierr = DRAINAGEmask.begin_access();   CHKERRQ(ierr);
   ierr = mask->begin_access();   CHKERRQ(ierr); 
@@ -407,7 +418,7 @@ PetscErrorCode POoceanboxmodel::extendIFBox() {
     for (PetscInt j=grid.ys; j<grid.ys+grid.ym; ++j) {
       if (BOXMODELmask(i,j)==box_neighboring){ 
       	  BOXMODELmask(i,j)=box_IF; 
-      	  lcounter_box_unidentified--; 
+      	  lcounter_box_unidentified++; 
           lcounter_CFbox[static_cast<int>(round(DRAINAGEmask(i,j)))]++;
       }
     }
@@ -416,9 +427,16 @@ PetscErrorCode POoceanboxmodel::extendIFBox() {
   ierr = DRAINAGEmask.end_access();   CHKERRQ(ierr);
   ierr = mask->end_access();   CHKERRQ(ierr); 
   ierr = BOXMODELmask.end_access(); CHKERRQ(ierr);
+  ierr = BOXMODELmask.beginGhostComm(); CHKERRQ(ierr);
+  ierr = BOXMODELmask.endGhostComm(); CHKERRQ(ierr);
+
+  ierr = PISMGlobalSum(&lcounter_box_unidentified, &all_counter_box_unidentified, grid.com); CHKERRQ(ierr);
+  counter_box_unidentified -= all_counter_box_unidentified;
   
-  ierr = PISMGlobalSum(&lcounter_box_unidentified, &counter_box_unidentified, grid.com); CHKERRQ(ierr);
-  for(int i=0;i<numberOfBasins;i++) { ierr = PISMGlobalSum(&lcounter_CFbox[i], &counter_CFbox[i], grid.com); CHKERRQ(ierr); } 
+  for(int i=0;i<numberOfBasins;i++) { 
+    ierr = PISMGlobalSum(&lcounter_CFbox[i], &all_counter_CFbox[i], grid.com); CHKERRQ(ierr);
+    counter_CFbox[i] += all_counter_CFbox[i];
+  } 
 
   return 0;
 }
@@ -432,7 +450,9 @@ PetscErrorCode POoceanboxmodel::identifyBOXMODELmask() {
   ierr = verbPrintf(2, grid.com,"A1b: in identify boxmodel mask rountine\n"); CHKERRQ(ierr);
   
   while(counter_box_unidentified > 0.0){
-  	  ierr = extendIFBox(); CHKERRQ(ierr); // FIXME size depends on how often this routine is called
+      ierr = verbPrintf(2, grid.com,"A1b: counter_box_unidentified=%f\n", counter_box_unidentified); CHKERRQ(ierr);
+  	  
+      ierr = extendIFBox(); CHKERRQ(ierr); // FIXME size depends on how often this routine is called
       ierr = extendIFBox(); CHKERRQ(ierr);
       ierr = extendIFBox(); CHKERRQ(ierr);
       ierr = extendIFBox(); CHKERRQ(ierr);

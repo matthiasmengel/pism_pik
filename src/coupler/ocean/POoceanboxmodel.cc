@@ -54,6 +54,11 @@ PetscErrorCode POoceanboxmodel::init(PISMVars &vars) {
   ierr = BOXMODELmask.create(grid, "BOXMODELmask", true); CHKERRQ(ierr);
   ierr = BOXMODELmask.set_attrs("model_state", "mask displaying ocean box model grid","", ""); CHKERRQ(ierr);
 
+  // mask to identify the grounded ice rises
+  ierr = ICERISESmask.create(grid, "ICERISESmask", true); CHKERRQ(ierr);
+  ierr = ICERISESmask.set_attrs("model_state", "mask displaying ice rises","", ""); CHKERRQ(ierr);
+  ierr = PISMOptionsIsSet("-exclude_icerises", exicerises_set); CHKERRQ(ierr);
+
   // salinity
   ierr = Soc.create(grid, "Soc", true); CHKERRQ(ierr);
   ierr = Soc.set_attrs("model_state", "ocean salinity field","", "ocean salinity field"); CHKERRQ(ierr);  //NOTE unit=psu
@@ -231,6 +236,7 @@ const int POoceanboxmodel::box_IF = 2.0;  // ocean box covering the rest of the 
 
 const int POoceanboxmodel::maskfloating = MASK_FLOATING;  
 const int POoceanboxmodel::maskocean = MASK_ICE_FREE_OCEAN;  
+const int POoceanboxmodel::maskgrounded = MASK_GROUNDED;  
 
 
 PetscErrorCode POoceanboxmodel::update(PetscReal my_t, PetscReal my_dt) {
@@ -240,7 +246,8 @@ PetscErrorCode POoceanboxmodel::update(PetscReal my_t, PetscReal my_dt) {
   ierr = mass_flux.at_time(t); CHKERRQ(ierr);
 
   ierr = verbPrintf(2, grid.com,"A  : calculating shelf_base_temperature\n"); CHKERRQ(ierr);
-
+  if (exicerises_set) {
+    ierr = identifyICERISES(); CHKERRQ(ierr);}
   ierr = extentOfIceShelves(); CHKERRQ(ierr); 
   ierr = identifyBOXMODELmask(); CHKERRQ(ierr); 
   ierr = oceanTemperature(); CHKERRQ(ierr);
@@ -257,6 +264,87 @@ PetscErrorCode POoceanboxmodel::update(PetscReal my_t, PetscReal my_dt) {
   return 0;
 }
 
+//! Identify if grounded area is continent or ice rise
+
+PetscErrorCode POoceanboxmodel::identifyICERISES() {
+  
+  PetscErrorCode ierr;
+  ierr = verbPrintf(2, grid.com,"A1a: in identifyICERISES rountine\n"); CHKERRQ(ierr);
+
+  PetscInt seed_x = (grid.Mx - 1)/2,
+           seed_y = (grid.My - 1)/2;
+
+  PetscScalar lcontinent_identified = 0.0,
+              all_continent_identified = 1.0,
+              previous_step_identified = 0.0;
+
+  PetscInt continent = 2,
+           ocean = 0,
+           icerise = 1,
+           unidentified = -1;
+
+  PetscInt iteration_round = 0;
+
+  ierr = ICERISESmask.begin_access();   CHKERRQ(ierr);
+  ierr = mask->begin_access();   CHKERRQ(ierr); 
+
+  ICERISESmask.set(unidentified);
+  ICERISESmask(seed_x,seed_y)=continent;
+
+  ierr = ICERISESmask.end_access();   CHKERRQ(ierr);
+  ierr = mask->end_access();   CHKERRQ(ierr);  
+
+
+  // find continent first
+  while(all_continent_identified > previous_step_identified){
+
+    iteration_round+=1;
+    previous_step_identified = all_continent_identified;
+
+    ierr = ICERISESmask.begin_access();   CHKERRQ(ierr);
+    ierr = mask->begin_access();   CHKERRQ(ierr); 
+
+    for (PetscInt i=grid.xs; i<grid.xs+grid.xm; ++i) {
+      for (PetscInt j=grid.ys; j<grid.ys+grid.ym; ++j) {
+        if ((*mask)(i,j)==maskgrounded && ICERISESmask(i,j)==unidentified &&
+          (ICERISESmask(i,j+1)==continent || ICERISESmask(i,j-1)==continent || 
+           ICERISESmask(i+1,j)==continent || ICERISESmask(i-1,j)==continent)){
+           ICERISESmask(i,j)=continent;
+           lcontinent_identified+=1;
+        }
+        else if ((*mask)(i,j)!=maskgrounded){
+          ICERISESmask(i,j)=ocean;
+        }
+      }
+    }
+
+    ierr = ICERISESmask.end_access();   CHKERRQ(ierr);
+    ierr = mask->end_access();   CHKERRQ(ierr);   
+    ierr = ICERISESmask.beginGhostComm(); CHKERRQ(ierr);
+    ierr = ICERISESmask.endGhostComm(); CHKERRQ(ierr);
+
+    ierr = PISMGlobalSum(&lcontinent_identified, &all_continent_identified, grid.com); CHKERRQ(ierr);
+    //ierr = verbPrintf(2, grid.com,"A1a: in identifyICERISES rountine: %d: identified=%f, before=%f \n",iteration_round,all_continent_identified,previous_step_identified); CHKERRQ(ierr);
+  }
+
+   //set ice rises value
+   ierr = ICERISESmask.begin_access();   CHKERRQ(ierr);
+    ierr = mask->begin_access();   CHKERRQ(ierr); 
+
+    for (PetscInt i=grid.xs; i<grid.xs+grid.xm; ++i) {
+      for (PetscInt j=grid.ys; j<grid.ys+grid.ym; ++j) {
+        if (ICERISESmask(i,j)==unidentified){
+          ICERISESmask(i,j)=icerise;
+        }
+      }
+    }
+    ierr = ICERISESmask.end_access();   CHKERRQ(ierr);
+    ierr = mask->end_access();   CHKERRQ(ierr);   
+
+
+  return 0;
+}
+
 
 
 //! Compute the extent of the ice shelves of each basin/region (i.e. counter)
@@ -266,7 +354,7 @@ PetscErrorCode POoceanboxmodel::update(PetscReal my_t, PetscReal my_dt) {
 PetscErrorCode POoceanboxmodel::extentOfIceShelves() {
   
   PetscErrorCode ierr;
-  ierr = verbPrintf(2, grid.com,"A1a: in extent of ice shelves rountine\n"); CHKERRQ(ierr);
+  ierr = verbPrintf(2, grid.com,"A1b: in extent of ice shelves rountine\n"); CHKERRQ(ierr);
 
   PetscScalar lcounter_box_unidentified = 0; //count the total amount of unidentified shelf boxes.
   PetscScalar lcounter[numberOfBasins];
@@ -275,24 +363,39 @@ PetscErrorCode POoceanboxmodel::extentOfIceShelves() {
   for (int i=0;i<numberOfBasins;i++){ lcounter[i]=0.0; }
   for (int i=0;i<numberOfBasins;i++){ lcounter_CFbox[i]=0.0;}
   for (int i=0;i<numberOfBasins;i++){ lcounter_GLbox[i]=0.0;}
+
+  PetscInt continent = 2;
   
   ierr = DRAINAGEmask.begin_access();   CHKERRQ(ierr);
   ierr = mask->begin_access();   CHKERRQ(ierr); 
-  if (drainageBasins_set || drainageBasins_OH10_set){ ierr = basins->begin_access(); CHKERRQ(ierr);}
   ierr = BOXMODELmask.begin_access(); CHKERRQ(ierr);
+  if (exicerises_set) { ierr = ICERISESmask.begin_access(); CHKERRQ(ierr);}
+  if (drainageBasins_set || drainageBasins_OH10_set){ ierr = basins->begin_access(); CHKERRQ(ierr);}
+
 
   for (PetscInt i=grid.xs; i<grid.xs+grid.xm; ++i) {
     for (PetscInt j=grid.ys; j<grid.ys+grid.ym; ++j) {
       if (drainageBasins_set || drainageBasins_OH10_set){
-        DRAINAGEmask(i,j)=(*basins)(i,j);
-      }
+        DRAINAGEmask(i,j)=(*basins)(i,j);}
+
       if ((*mask)(i,j)==maskfloating){ //if this is a shelf cell
         lcounter[static_cast<int>(round(DRAINAGEmask(i,j)))]++;
-        
-        if ((*mask)(i,j+1)<maskfloating || (*mask)(i,j-1)<maskfloating || 
-            (*mask)(i+1,j)<maskfloating || (*mask)(i-1,j)<maskfloating || 
-            (*mask)(i+1,j+1)<maskfloating || (*mask)(i+1,j-1)<maskfloating ||
-            (*mask)(i-1,j+1)<maskfloating || (*mask)(i-1,j-1)<maskfloating ) { // i.e. there is a grounded neighboring cell
+
+        bool neighbor_to_land;
+        if (exicerises_set) {
+          neighbor_to_land = (  ICERISESmask(i,j+1)==continent || ICERISESmask(i,j-1)==continent || 
+                                ICERISESmask(i+1,j)==continent || ICERISESmask(i-1,j)==continent || 
+                                ICERISESmask(i+1,j+1)==continent || ICERISESmask(i+1,j-1)==continent ||
+                                ICERISESmask(i-1,j+1)==continent || ICERISESmask(i-1,j-1)==continent );
+        } else {
+          neighbor_to_land = (  (*mask)(i,j+1)<maskfloating || (*mask)(i,j-1)<maskfloating || 
+                                (*mask)(i+1,j)<maskfloating || (*mask)(i-1,j)<maskfloating || 
+                                (*mask)(i+1,j+1)<maskfloating || (*mask)(i+1,j-1)<maskfloating ||
+                                (*mask)(i-1,j+1)<maskfloating || (*mask)(i-1,j-1)<maskfloating );
+        }
+
+        if (neighbor_to_land){
+             // i.e. there is a grounded neighboring cell (which is not ice rise!)
             BOXMODELmask(i,j) = box_GL;
             lcounter_GLbox[static_cast<int>(round(DRAINAGEmask(i,j)))]++;
         } else if ((*mask)(i,j+1)==maskocean || (*mask)(i,j-1)==maskocean || 
@@ -315,6 +418,7 @@ PetscErrorCode POoceanboxmodel::extentOfIceShelves() {
 
   //ierr = verbPrintf(2, grid.com,"This box is at the shelf front: i=%d, j=%d, BOXMODELmask=%f, basin =%f\n", 183,83, BOXMODELmask(183,83), DRAINAGEmask(183,83)); CHKERRQ(ierr);
   if (drainageBasins_set || drainageBasins_OH10_set){ ierr = basins->end_access(); CHKERRQ(ierr);}
+  if (exicerises_set) { ierr = ICERISESmask.end_access();   CHKERRQ(ierr);}
   ierr = DRAINAGEmask.end_access(); CHKERRQ(ierr);
   ierr = DRAINAGEmask.beginGhostComm(); CHKERRQ(ierr);
   ierr = DRAINAGEmask.endGhostComm(); CHKERRQ(ierr);
@@ -429,7 +533,7 @@ PetscErrorCode POoceanboxmodel::identifyBOXMODELmask() {
 
   PetscErrorCode ierr;
 
-  ierr = verbPrintf(2, grid.com,"A1b: in identify boxmodel mask rountine\n"); CHKERRQ(ierr);
+  ierr = verbPrintf(2, grid.com,"A1c: in identify boxmodel mask rountine\n"); CHKERRQ(ierr);
   
   while(counter_box_unidentified > 0.0){
   	  ierr = extendIFBox(); CHKERRQ(ierr); // FIXME size depends on how often this routine is called
@@ -906,6 +1010,9 @@ PetscErrorCode POoceanboxmodel::write_variables(set<string> vars, string filenam
   if (set_contains(vars, "overturning")) {  ierr = overturning.write(filename.c_str()); CHKERRQ(ierr); }
   if (set_contains(vars, "heatflux")) {  ierr = heatflux.write(filename.c_str()); CHKERRQ(ierr);  }
   if (set_contains(vars, "basalmeltrate_shelf")) { ierr = basalmeltrate_shelf.write(filename.c_str()); CHKERRQ(ierr); }
+  if (exicerises_set) {
+    if (set_contains(vars, "ICERISESmask")) {  ierr = ICERISESmask.write(filename.c_str()); CHKERRQ(ierr);  }
+  }
 
   return 0;
 }

@@ -58,6 +58,7 @@ public:
     result = sea_level;
     return 0;
   }
+  virtual PetscErrorCode identifyICERISES();
   virtual PetscErrorCode extentOfIceShelves();
   virtual PetscErrorCode identifyBOXMODELmask();
   virtual PetscErrorCode extendGLBox();
@@ -77,14 +78,14 @@ protected:
 
   IceModelVec2Int *mask;  // not owned by this class
 
-  IceModelVec2S BOXMODELmask, DRAINAGEmask, Soc, Soc_base, Toc, Toc_base, Toc_inCelsius, T_star, Toc_anomaly, overturning, heatflux, basalmeltrate_shelf;
+  IceModelVec2S ICERISESmask, BOXMODELmask, DRAINAGEmask, Soc, Soc_base, Toc, Toc_base, Toc_inCelsius, T_star, Toc_anomaly, overturning, heatflux, basalmeltrate_shelf;
 
-  bool ocean_oceanboxmodel_deltaT_set, drainageBasins_set, drainageBasins_OH10_set;
+  bool ocean_oceanboxmodel_deltaT_set, drainageBasins_set, drainageBasins_OH10_set, exicerises_set;
 
   Timeseries *delta_T;
 
   static const int shelf_unidentified, noshelf;
-  static const int box_unidentified, box_noshelf, box_GL, box_neighboring, box_IF, maskfloating, maskocean;
+  static const int box_unidentified, box_noshelf, box_GL, box_neighboring, box_IF, maskfloating, maskocean, maskgrounded;
 
   PetscInt numberOfBasins;
 

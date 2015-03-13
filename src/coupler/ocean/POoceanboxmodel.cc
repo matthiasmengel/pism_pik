@@ -59,6 +59,10 @@ PetscErrorCode POoceanboxmodel::init(PISMVars &vars) {
   ierr = ICERISESmask.set_attrs("model_state", "mask displaying ice rises","", ""); CHKERRQ(ierr);
   ierr = PISMOptionsIsSet("-exclude_icerises", exicerises_set); CHKERRQ(ierr);
 
+  // mask to calculate the mean salinity and ocean temperature in front of each basin 
+  ierr = OCEANMEANmask.create(grid, "OCEANMEANmask", true); CHKERRQ(ierr);
+  ierr = OCEANMEANmask.set_attrs("model_state", "mask displaying ocean region for parameter input","", ""); CHKERRQ(ierr);
+
   // salinity
   ierr = Soc.create(grid, "Soc", true); CHKERRQ(ierr);
   ierr = Soc.set_attrs("model_state", "ocean salinity field","", "ocean salinity field"); CHKERRQ(ierr);  //NOTE unit=psu
@@ -245,6 +249,10 @@ PetscErrorCode POoceanboxmodel::update(PetscReal my_t, PetscReal my_dt) {
   ierr = temp.at_time(t); CHKERRQ(ierr);
   ierr = mass_flux.at_time(t); CHKERRQ(ierr);
 
+  ierr = verbPrintf(2, grid.com,"0  : calculating mean salinity and temperatures\n"); CHKERRQ(ierr);
+  //ierr = computeOCEANMEANS(); CHKERRQ(ierr); 
+  
+
   ierr = verbPrintf(2, grid.com,"A  : calculating shelf_base_temperature\n"); CHKERRQ(ierr);
   if (exicerises_set) {
     ierr = identifyICERISES(); CHKERRQ(ierr);}
@@ -263,6 +271,111 @@ PetscErrorCode POoceanboxmodel::update(PetscReal my_t, PetscReal my_dt) {
 
   return 0;
 }
+
+
+
+//! When ocean_given is set compute mean salinity and temperature in each basin. 
+
+//NOTE: CALCULUTAION OF means missing, mean mask is found correctly by now.
+
+PetscErrorCode POoceanboxmodel::computeOCEANMEANS() {
+  
+  PetscErrorCode ierr;
+  ierr = verbPrintf(2, grid.com,"0a  : in computeOCEANMEANS routine \n"); CHKERRQ(ierr);
+  
+  PetscInt number_of_iterations = 0; // to get circa 200km before the ice shelf, FIXME do we want this to be chosable?
+  number_of_iterations = round(200e3 / ((grid.dx +grid.dy)/2.0)); // meter 
+  //ierr = verbPrintf(2, grid.com,"0a  : number of Iterations = %d , %f\n", number_of_iterations, 200e3 / ((grid.dx +grid.dy)/2.0)); CHKERRQ(ierr);
+
+  PetscInt ocean_mean_region = 2,
+           ocean_mean_region_candidate = 1, 
+           unidentified = -1;
+
+  //lcounter_ocean_mean_region, length=numberOfBasins =0
+  //lcounter_salinity, length=numberOfBasins =0
+  //lcounter_temperature, length=numbeOfBasins =0
+
+
+  ierr = OCEANMEANmask.begin_access();   CHKERRQ(ierr);
+  ierr = mask->begin_access();   CHKERRQ(ierr); 
+  ierr = temp.begin_access();   CHKERRQ(ierr); 
+  ierr = mass_flux.begin_access();   CHKERRQ(ierr); //salinitiy
+
+  //label ocean cells neighboring ice shelf cells as ocean_mean_region
+  for (PetscInt i=grid.xs; i<grid.xs+grid.xm; ++i) {
+    for (PetscInt j=grid.ys; j<grid.ys+grid.ym; ++j) {
+      if ((*mask)(i,j)==maskocean && 
+          ((*mask)(i,j+1)==maskfloating || (*mask)(i,j-1)==maskfloating || 
+           (*mask)(i+1,j)==maskfloating || (*mask)(i-1,j)==maskfloating)){ // if the cell is ocean directly at the ice shelf front
+           OCEANMEANmask(i,j)=ocean_mean_region;
+           // lcounter_ocean_mean_region[basin(i,j)]++
+           // lcounter_salinity[basin(i,j)] + salinity(i,j) //FIXME salinity? / mass_flux
+           // lcounter_temperature[(basin(i,j))] + temp(i,j) //FIXME temp? PROBIERE: pointer oder lokal.
+           //ierr = verbPrintf(2, grid.com,"0a  : temp(i,j)=%f, salinity =%f \n", temp(i,j), mass_flux(i,j)); CHKERRQ(ierr);
+        }
+        else { // not ocean or not neighboring the calving front
+          OCEANMEANmask(i,j)=unidentified;
+        }
+      }
+    }
+
+
+  ierr = OCEANMEANmask.end_access();   CHKERRQ(ierr); //FIXME necessary?
+  ierr = mask->end_access();   CHKERRQ(ierr);  
+  ierr = temp.end_access();   CHKERRQ(ierr);  
+  ierr = mass_flux.end_access();   CHKERRQ(ierr);  //salinity
+  //FIXME GhostComm?
+
+  ierr = OCEANMEANmask.begin_access();   CHKERRQ(ierr);
+  ierr = mask->begin_access();   CHKERRQ(ierr); 
+
+  for(PetscInt k=0;k<number_of_iterations;k++){
+    //NOTE at the moment we do not only extend the mask towards the ocean, but also along the non-ice-shelf coasts. Do we care? 
+    ierr = verbPrintf(2, grid.com,"0a  : i = %d , \n", k); CHKERRQ(ierr);
+
+    // Find candidates for ocean_mean_region:
+    for (PetscInt i=grid.xs; i<grid.xs+grid.xm; ++i) {
+      for (PetscInt j=grid.ys; j<grid.ys+grid.ym; ++j) {
+        if ((*mask)(i,j)==maskocean && OCEANMEANmask(i,j)==unidentified &&
+            (OCEANMEANmask(i,j+1)==ocean_mean_region || OCEANMEANmask(i,j-1)==ocean_mean_region || 
+             OCEANMEANmask(i+1,j)==ocean_mean_region || OCEANMEANmask(i-1,j)==ocean_mean_region)){ // if the cell is ocean directly at the ice shelf front
+             OCEANMEANmask(i,j)=ocean_mean_region_candidate;
+        } //if
+      } //j
+    } //i
+
+    //Label candidads for ocean_mean_region:
+    for (PetscInt i=grid.xs; i<grid.xs+grid.xm; ++i) {
+      for (PetscInt j=grid.ys; j<grid.ys+grid.ym; ++j) {
+        if ( OCEANMEANmask(i,j)==ocean_mean_region_candidate){
+             OCEANMEANmask(i,j)=ocean_mean_region;
+           // lcounter_ocean_mean_region[basin(i,j)]++
+           // lcounter_salinity[basin(i,j)]+salinity(i,j)
+           // lcounter_temperature[(basin(i,j))]+temp(i,j)
+        } //if
+      } //j
+    } //i
+
+  } // number of iteration
+
+  ierr = OCEANMEANmask.end_access();   CHKERRQ(ierr);
+  ierr = mask->end_access();   CHKERRQ(ierr);  
+
+  // GLOBALSum lcounter_ocean_mean_region[basin(i,j)]++
+  // GlobalSum lcounter_salinity[basin(i,j)]++
+  // GlobalSum lcounter_temperature[(basin(i,j))]++
+
+  //for basin in basins:
+    //mean_salinity = lcounter_salinity[basin]/lcounter_ocean_means[basin]
+    // same for temp
+    //FIXME where to save temp and salinity?
+
+  // ATTENTION TO PARALLEL COMPUTING!
+
+  return 0;
+}
+
+
 
 //! Identify if grounded area is continent or ice rise
 
@@ -1023,6 +1136,7 @@ PetscErrorCode POoceanboxmodel::write_variables(set<string> vars, string filenam
 
   if (set_contains(vars, "BOXMODELmask")) {  ierr = BOXMODELmask.write(filename.c_str()); CHKERRQ(ierr);  }
   if (set_contains(vars, "DRAINAGEmask")) {  ierr = DRAINAGEmask.write(filename.c_str()); CHKERRQ(ierr);  }
+  if (set_contains(vars, "OCEANMEANmask")) {  ierr = OCEANMEANmask.write(filename.c_str()); CHKERRQ(ierr);  }
   if (set_contains(vars, "Soc")) {  ierr = Soc.write(filename.c_str()); CHKERRQ(ierr); }
   if (set_contains(vars, "Soc_base")) { ierr = Soc_base.write(filename.c_str()); CHKERRQ(ierr); }
   if (set_contains(vars, "Toc")) { ierr = Toc.write(filename.c_str()); CHKERRQ(ierr); }

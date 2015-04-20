@@ -249,8 +249,9 @@ PetscErrorCode POoceanboxmodel::update(PetscReal my_t, PetscReal my_dt) {
   ierr = temp.at_time(t); CHKERRQ(ierr);
   ierr = mass_flux.at_time(t); CHKERRQ(ierr);
 
+  //FXIME ocean_given is set!!
   ierr = verbPrintf(2, grid.com,"0  : calculating mean salinity and temperatures\n"); CHKERRQ(ierr);
-  //ierr = computeOCEANMEANS(); CHKERRQ(ierr); 
+  ierr = computeOCEANMEANS(); CHKERRQ(ierr); 
   
 
   ierr = verbPrintf(2, grid.com,"A  : calculating shelf_base_temperature\n"); CHKERRQ(ierr);
@@ -274,15 +275,26 @@ PetscErrorCode POoceanboxmodel::update(PetscReal my_t, PetscReal my_dt) {
 
 
 
-//! When ocean_given is set compute mean salinity and temperature in each basin. 
-
-//NOTE: CALCULUTAION OF means missing, mean mask is found correctly by now.
-
+//! When ocean_given is set compute mean salinity and temperature in each basin.
 PetscErrorCode POoceanboxmodel::computeOCEANMEANS() {
-  
+  /*NOTE: 
+  -basin 0 (which is not existing) is the margin of the domain-it has currently seven boxes which lie in the OCEANMEANmask
+    -> shall we exclude this case? Or do we continue with it, e.g. for the case of just one basin?
+  -we call this rountine before we call extentOfIceShelves, where the Drainage mask is set to basins' values. 
+    -> should we use basins instead? Or define the drainage mask earlier? This could be the reason why
+  -during the initialisation we have wrong values for the salinity and temperature
+  -currently, by iterating, we may include ocean cells which neighbor directly bedrock or grounded ice
+    -> do we want to exclude them?
+  -how big do we want to have the region over which we calculate the ocean means? 
+    -> search in literature? currently 200km
+  -currently we enter this routine for all calculations
+    -> do we want to have an if(there is an ocean filed) {call routine?}
+  -check the values for basin 14 (there are just 6 cells in the mask) to see whether the means are correct!
+  */
+
   PetscErrorCode ierr;
   ierr = verbPrintf(2, grid.com,"0a  : in computeOCEANMEANS routine \n"); CHKERRQ(ierr);
-  
+
   PetscInt number_of_iterations = 0; // to get circa 200km before the ice shelf, FIXME do we want this to be chosable?
   number_of_iterations = round(200e3 / ((grid.dx +grid.dy)/2.0)); // meter 
   //ierr = verbPrintf(2, grid.com,"0a  : number of Iterations = %d , %f\n", number_of_iterations, 200e3 / ((grid.dx +grid.dy)/2.0)); CHKERRQ(ierr);
@@ -291,12 +303,24 @@ PetscErrorCode POoceanboxmodel::computeOCEANMEANS() {
            ocean_mean_region_candidate = 1, 
            unidentified = -1;
 
-  //lcounter_ocean_mean_region, length=numberOfBasins =0
-  //lcounter_salinity, length=numberOfBasins =0
-  //lcounter_temperature, length=numbeOfBasins =0
+  PetscScalar lm_count[numberOfBasins]; //count cells to take mean over for each basin
+  PetscScalar m_count[numberOfBasins];
+  PetscScalar lm_Sval[numberOfBasins]; //add salinity for each basin
+  PetscScalar lm_Tval[numberOfBasins]; //add temperature for each basin
+  PetscScalar m_Tval[numberOfBasins]; //FIXME delete?
+  PetscScalar m_Sval[numberOfBasins]; //FIXME delete?
 
+  for(int k=0;k<numberOfBasins;k++){
+    m_count[k]=0.0;
+    lm_count[k]=0.0;
+    lm_Sval[k]=0.0;
+    lm_Tval[k]=0.0;
+    m_Tval[k]=0.0; //FIXME delete?
+    m_Sval[k]=0.0; //FIXME delete?
+  }
 
   ierr = OCEANMEANmask.begin_access();   CHKERRQ(ierr);
+  ierr = DRAINAGEmask.begin_access();   CHKERRQ(ierr); 
   ierr = mask->begin_access();   CHKERRQ(ierr); 
   ierr = temp.begin_access();   CHKERRQ(ierr); 
   ierr = mass_flux.begin_access();   CHKERRQ(ierr); //salinitiy
@@ -307,11 +331,11 @@ PetscErrorCode POoceanboxmodel::computeOCEANMEANS() {
       if ((*mask)(i,j)==maskocean && 
           ((*mask)(i,j+1)==maskfloating || (*mask)(i,j-1)==maskfloating || 
            (*mask)(i+1,j)==maskfloating || (*mask)(i-1,j)==maskfloating)){ // if the cell is ocean directly at the ice shelf front
-           OCEANMEANmask(i,j)=ocean_mean_region;
-           // lcounter_ocean_mean_region[basin(i,j)]++
-           // lcounter_salinity[basin(i,j)] + salinity(i,j) //FIXME salinity? / mass_flux
-           // lcounter_temperature[(basin(i,j))] + temp(i,j) //FIXME temp? PROBIERE: pointer oder lokal.
-           //ierr = verbPrintf(2, grid.com,"0a  : temp(i,j)=%f, salinity =%f \n", temp(i,j), mass_flux(i,j)); CHKERRQ(ierr);
+            PetscInt shelf_id = static_cast<int>(round(DRAINAGEmask(i,j)));
+            OCEANMEANmask(i,j)=ocean_mean_region;
+            lm_count[shelf_id]+=1;
+            lm_Sval[shelf_id]+=mass_flux(i,j);
+            lm_Tval[shelf_id]+=temp(i,j);
         }
         else { // not ocean or not neighboring the calving front
           OCEANMEANmask(i,j)=unidentified;
@@ -321,17 +345,20 @@ PetscErrorCode POoceanboxmodel::computeOCEANMEANS() {
 
 
   ierr = OCEANMEANmask.end_access();   CHKERRQ(ierr); //FIXME necessary?
+  ierr = DRAINAGEmask.end_access();   CHKERRQ(ierr); 
   ierr = mask->end_access();   CHKERRQ(ierr);  
   ierr = temp.end_access();   CHKERRQ(ierr);  
   ierr = mass_flux.end_access();   CHKERRQ(ierr);  //salinity
   //FIXME GhostComm?
+  // FIXME do we need to do something with the lcounters for parallel computing reasons?
 
   ierr = OCEANMEANmask.begin_access();   CHKERRQ(ierr);
+  ierr = DRAINAGEmask.begin_access();   CHKERRQ(ierr); 
   ierr = mask->begin_access();   CHKERRQ(ierr); 
 
   for(PetscInt k=0;k<number_of_iterations;k++){
     //NOTE at the moment we do not only extend the mask towards the ocean, but also along the non-ice-shelf coasts. Do we care? 
-    ierr = verbPrintf(2, grid.com,"0a  : i = %d , \n", k); CHKERRQ(ierr);
+    //ierr = verbPrintf(2, grid.com,"0a  : i = %d , \n", k); CHKERRQ(ierr);
 
     // Find candidates for ocean_mean_region:
     for (PetscInt i=grid.xs; i<grid.xs+grid.xm; ++i) {
@@ -348,10 +375,14 @@ PetscErrorCode POoceanboxmodel::computeOCEANMEANS() {
     for (PetscInt i=grid.xs; i<grid.xs+grid.xm; ++i) {
       for (PetscInt j=grid.ys; j<grid.ys+grid.ym; ++j) {
         if ( OCEANMEANmask(i,j)==ocean_mean_region_candidate){
-             OCEANMEANmask(i,j)=ocean_mean_region;
-           // lcounter_ocean_mean_region[basin(i,j)]++
-           // lcounter_salinity[basin(i,j)]+salinity(i,j)
-           // lcounter_temperature[(basin(i,j))]+temp(i,j)
+
+            PetscInt shelf_id = static_cast<int>(round(DRAINAGEmask(i,j)));
+            OCEANMEANmask(i,j)=ocean_mean_region;
+            lm_count[shelf_id]+=1;
+            lm_Sval[shelf_id]+=mass_flux(i,j);
+            lm_Tval[shelf_id]+=temp(i,j);
+            //ierr = verbPrintf(2, grid.com,"0a  : basin =%d,  mass_flux = %f, temp=%f , \n", shelf_id,mass_flux(i,j), temp(i,j)); CHKERRQ(ierr);
+      
         } //if
       } //j
     } //i
@@ -359,18 +390,23 @@ PetscErrorCode POoceanboxmodel::computeOCEANMEANS() {
   } // number of iteration
 
   ierr = OCEANMEANmask.end_access();   CHKERRQ(ierr);
+  ierr = DRAINAGEmask.end_access();   CHKERRQ(ierr); 
   ierr = mask->end_access();   CHKERRQ(ierr);  
 
-  // GLOBALSum lcounter_ocean_mean_region[basin(i,j)]++
-  // GlobalSum lcounter_salinity[basin(i,j)]++
-  // GlobalSum lcounter_temperature[(basin(i,j))]++
+  for(int i=0;i<numberOfBasins;i++) {
+    ierr = PISMGlobalSum(&lm_count[i], &m_count[i], grid.com); CHKERRQ(ierr);
+    ierr = PISMGlobalSum(&lm_Sval[i], &m_Sval[i], grid.com); CHKERRQ(ierr);
+    ierr = PISMGlobalSum(&lm_Tval[i], &m_Tval[i], grid.com); CHKERRQ(ierr);
+  } 
 
-  //for basin in basins:
-    //mean_salinity = lcounter_salinity[basin]/lcounter_ocean_means[basin]
-    // same for temp
-    //FIXME where to save temp and salinity?
-
-  // ATTENTION TO PARALLEL COMPUTING!
+  for(int i=0;i<numberOfBasins;i++) {
+    m_Sval[i] = m_Sval[i] / m_count[i];
+    m_Tval[i] = m_Tval[i] / m_count[i]; 
+    
+    Toc_base_vec[i]=m_Tval[i] - 273.15;
+    Soc_base_vec[i]=m_Sval[i];
+    ierr = verbPrintf(2, grid.com,"0: basin= %d, temp =%f, salinity=%f\n", i, Toc_base_vec[i], Soc_base_vec[i]); CHKERRQ(ierr);
+  } 
 
   return 0;
 }

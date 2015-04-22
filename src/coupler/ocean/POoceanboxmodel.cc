@@ -249,10 +249,11 @@ PetscErrorCode POoceanboxmodel::update(PetscReal my_t, PetscReal my_dt) {
   ierr = temp.at_time(t); CHKERRQ(ierr);
   ierr = mass_flux.at_time(t); CHKERRQ(ierr);
 
-  //FXIME ocean_given is set!!
-  ierr = verbPrintf(2, grid.com,"0  : calculating mean salinity and temperatures\n"); CHKERRQ(ierr);
-  ierr = computeOCEANMEANS(); CHKERRQ(ierr); 
-  
+
+  if (drainageBasins_set){   //FXIME necessary?
+    ierr = verbPrintf(2, grid.com,"0  : calculating mean salinity and temperatures\n"); CHKERRQ(ierr);
+    ierr = computeOCEANMEANS(); CHKERRQ(ierr);     
+  }
 
   ierr = verbPrintf(2, grid.com,"A  : calculating shelf_base_temperature\n"); CHKERRQ(ierr);
   if (exicerises_set) {
@@ -438,7 +439,10 @@ PetscErrorCode POoceanboxmodel::identifyICERISES() {
   ierr = mask->begin_access();   CHKERRQ(ierr); 
 
   ICERISESmask.set(unidentified);
-  ICERISESmask(seed_x,seed_y)=continent;
+  
+  if ((seed_x >= grid.xs) && (seed_x < grid.xs+grid.xm) && (seed_y >= grid.ys)&& (seed_y <= grid.ys+grid.ym)){
+    ICERISESmask(seed_x,seed_y)=continent;
+  }
 
   ierr = ICERISESmask.end_access();   CHKERRQ(ierr);
   ierr = mask->end_access();   CHKERRQ(ierr);  

@@ -274,8 +274,6 @@ PetscErrorCode POoceanboxmodel::update(PetscReal my_t, PetscReal my_dt) {
   return 0;
 }
 
-
-
 //! When ocean_given is set compute mean salinity and temperature in each basin.
 PetscErrorCode POoceanboxmodel::computeOCEANMEANS() {
   /*NOTE: 
@@ -290,7 +288,7 @@ PetscErrorCode POoceanboxmodel::computeOCEANMEANS() {
     -> search in literature? currently 200km
   -currently we enter this routine for all calculations
     -> do we want to have an if(there is an ocean filed) {call routine?}
-  -check the values for basin 14 (there are just 6 cells in the mask) to see whether the means are correct!
+  -check the values for basin 14 (there are just 6 cells in the mask): Calculation is correct!
   */
 
   PetscErrorCode ierr;
@@ -337,6 +335,10 @@ PetscErrorCode POoceanboxmodel::computeOCEANMEANS() {
             lm_count[shelf_id]+=1;
             lm_Sval[shelf_id]+=mass_flux(i,j);
             lm_Tval[shelf_id]+=temp(i,j);
+            //ierr = verbPrintf(2, grid.com,"0a,shelf_id =%d , \n", shelf_id); CHKERRQ(ierr);
+            //if(shelf_id==14){
+            //  ierr = verbPrintf(2, grid.com,"0a,basin 14: salinitiy= %f, temperature =%f , \n", mass_flux(i,j), temp(i,j)); CHKERRQ(ierr);
+            //}
         }
         else { // not ocean or not neighboring the calving front
           OCEANMEANmask(i,j)=unidentified;
@@ -383,7 +385,9 @@ PetscErrorCode POoceanboxmodel::computeOCEANMEANS() {
             lm_Sval[shelf_id]+=mass_flux(i,j);
             lm_Tval[shelf_id]+=temp(i,j);
             //ierr = verbPrintf(2, grid.com,"0a  : basin =%d,  mass_flux = %f, temp=%f , \n", shelf_id,mass_flux(i,j), temp(i,j)); CHKERRQ(ierr);
-      
+            //if(shelf_id==14){
+            //  ierr = verbPrintf(2, grid.com,"0a,basin 14: salinitiy= %f, temperature =%f , \n", mass_flux(i,j), temp(i,j)); CHKERRQ(ierr);
+            //}
         } //if
       } //j
     } //i
@@ -706,12 +710,17 @@ PetscErrorCode POoceanboxmodel::extendIFBox() {
 PetscErrorCode POoceanboxmodel::identifyBOXMODELmask() {
 
   PetscErrorCode ierr;
-
   ierr = verbPrintf(2, grid.com,"A1c: in identify boxmodel mask rountine\n"); CHKERRQ(ierr);
   
-  while(counter_box_unidentified > 0.0){
-      ierr = verbPrintf(2, grid.com,"A1b: counter_box_unidentified=%f\n", counter_box_unidentified); CHKERRQ(ierr);
-  	  
+  PetscScalar lcounter_box_unidentified = counter_box_unidentified+1.0; 
+  
+  //while(counter_box_unidentified > 0.0){
+  while((counter_box_unidentified > 0.0)&&(lcounter_box_unidentified != counter_box_unidentified)){
+      ierr = verbPrintf(2, grid.com,"A1b: counter_box_unidentified=%f, lcounter_box_unidentified=%f\n", counter_box_unidentified, lcounter_box_unidentified); CHKERRQ(ierr);
+
+      lcounter_box_unidentified = counter_box_unidentified;
+      ierr = verbPrintf(2, grid.com,"A1b: counter_box_unidentified=%f, lcounter_box_unidentified=%f\n", counter_box_unidentified, lcounter_box_unidentified); CHKERRQ(ierr);
+
       ierr = extendIFBox(); CHKERRQ(ierr); // FIXME size depends on how often this routine is called
       ierr = extendIFBox(); CHKERRQ(ierr);
       ierr = extendIFBox(); CHKERRQ(ierr);
@@ -719,7 +728,25 @@ PetscErrorCode POoceanboxmodel::identifyBOXMODELmask() {
       ierr = extendIFBox(); CHKERRQ(ierr);
       ierr = extendIFBox(); CHKERRQ(ierr);
       ierr = extendGLBox(); CHKERRQ(ierr); 
+      
+      ierr = verbPrintf(2, grid.com,"A1b: after calls: counter_box_unidentified=%f, lcounter_box_unidentified=%f\n", counter_box_unidentified, lcounter_box_unidentified); CHKERRQ(ierr);
+  	  
   }
+
+  if(counter_box_unidentified>0.0){ //if there are still floating cells which were not labels before, i.e. a shelf connected to an island (in the ex_icerises case)
+  	ierr = BOXMODELmask.begin_access(); CHKERRQ(ierr);
+  	for (PetscInt i=grid.xs; i<grid.xs+grid.xm; ++i) {
+      for (PetscInt j=grid.ys; j<grid.ys+grid.ym; ++j) {
+        if (BOXMODELmask(i,j)==box_unidentified ){ // i.e. this is an unidentified shelf cell with a neighbor that is in the IFbox
+      	  	ierr = verbPrintf(2, grid.com,"A1b: left over i=%d, j=%d \n", i,j); CHKERRQ(ierr);
+  	  
+      	  	BOXMODELmask(i,j)=box_GL;   
+      	}
+      }
+  	}
+  	ierr = BOXMODELmask.end_access(); CHKERRQ(ierr);
+  }
+
 
   for(int i=0;i<numberOfBasins;i++){ ierr = verbPrintf(2, grid.com,"A1b: basin= %d, counter[i] = %f, counter_CFbox= %f, counter_GLbox = %f, ratio_CF_box= %f, ratio_GL_box= %f\n", i, counter[i], counter_CFbox[i], counter_GLbox[i], counter_CFbox[i]/counter[i], counter_GLbox[i]/counter[i]); CHKERRQ(ierr);}
   return 0;

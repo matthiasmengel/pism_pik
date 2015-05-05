@@ -58,6 +58,7 @@ public:
     result = sea_level;
     return 0;
   }
+  virtual PetscErrorCode roundBasins(PetscInt i, PetscInt j);
   virtual PetscErrorCode computeOCEANMEANS();
   virtual PetscErrorCode identifyICERISES();
   virtual PetscErrorCode extentOfIceShelves();
@@ -79,7 +80,7 @@ protected:
 
   IceModelVec2Int *mask;  // not owned by this class
 
-  IceModelVec2S ICERISESmask, BOXMODELmask, DRAINAGEmask, OCEANMEANmask, 
+  IceModelVec2S ICERISESmask, BOXMODELmask, DRAINAGEmask, OCEANMEANmask, CHECKmask, //FIXME delete CHECKmask
                 Soc, Soc_base, Toc, Toc_base, Toc_inCelsius, T_star, 
                 Toc_anomaly, overturning, heatflux, basalmeltrate_shelf;
 

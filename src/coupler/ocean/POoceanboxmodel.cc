@@ -201,8 +201,8 @@ PetscErrorCode POoceanboxmodel::init(PISMVars &vars) {
         ierr = verbPrintf(2, grid.com,"Using original Olbers Hellmer 2010 Drainage Basins...\n "); CHKERRQ(ierr);
       }
       if (numberOfBasins == 18) {// FIXME Zahl noch mal checken!
-        Toc_base_vec[i]= Toc_base_vec_OH10[i]; // FIXME original OH10 Werte einlesen!
-        Soc_base_vec[i]     = Soc_base_vec_OH10[i];
+        Toc_base_vec[i]    = Toc_base_vec_OH10[i]; // FIXME original OH10 Werte einlesen!
+        Soc_base_vec[i]    = Soc_base_vec_OH10[i];
         gamma_T_star_vec[i]= gamma_T_star_vec_OH10[i];
         C_vec[i]           = C_vec_OH10[i];
       } else {
@@ -210,14 +210,14 @@ PetscErrorCode POoceanboxmodel::init(PISMVars &vars) {
         PISMEnd();
      }
     }
-    else if (drainageBasins_set) { //drainageBasins_set
+    else if (drainageBasins_set) { //call OCEANMEANS()
 
-      Toc_base_vec[i]= -1.5; //FIXME read from file, mean over ocean values in front of basin
-      Soc_base_vec[i]     = 34.5;
-      gamma_T_star_vec[i]= gamma_T;
+      Toc_base_vec[i] = -1.5; //dummy, FIXME why these values? 
+      Soc_base_vec[i] = 34.5; //dummy
+      gamma_T_star_vec[i]= gamma_T; 
       C_vec[i]           = value_C;
       if(i==1){
-        ierr = verbPrintf(2, grid.com,"Using %d drainage basins and default values: Toc = %f, Soc = %f, gamma_T_star= %f, C = %f...\n ", numberOfBasins,Toc_base_vec[i], Soc_base_vec[i], gamma_T_star_vec[i], C_vec[i]  ); CHKERRQ(ierr);       
+        ierr = verbPrintf(2, grid.com,"Using %d drainage basins and default values: gamma_T_star= %f, C = %f, calculate Soc and Toc from thetao and salinity...\n ", numberOfBasins, gamma_T_star_vec[i], C_vec[i]  ); CHKERRQ(ierr);       
       }
     } else{
       Toc_base_vec[i] = -1.9; 
@@ -255,7 +255,7 @@ PetscErrorCode POoceanboxmodel::update(PetscReal my_t, PetscReal my_dt) {
   ierr = mass_flux.at_time(t); CHKERRQ(ierr);
 
 
-  if (drainageBasins_set){   //FXIME necessary?
+  if (!drainageBasins_OH10_set && drainageBasins_set){   //FXIME necessary?
     ierr = verbPrintf(2, grid.com,"0  : calculating mean salinity and temperatures\n"); CHKERRQ(ierr);
     ierr = computeOCEANMEANS(); CHKERRQ(ierr);     
   }
@@ -753,9 +753,9 @@ PetscErrorCode POoceanboxmodel::identifyBOXMODELmask() {
       lcounter_box_unidentified = counter_box_unidentified;
       ierr = verbPrintf(2, grid.com,"A1b: counter_box_unidentified=%f, lcounter_box_unidentified=%f\n", counter_box_unidentified, lcounter_box_unidentified); CHKERRQ(ierr);
 
-      //ierr = extendIFBox(); CHKERRQ(ierr); // FIXME size depends on how often this routine is called
-      //ierr = extendIFBox(); CHKERRQ(ierr);
-      //ierr = extendIFBox(); CHKERRQ(ierr);
+      ierr = extendIFBox(); CHKERRQ(ierr); // FIXME size depends on how often this routine is called
+      ierr = extendIFBox(); CHKERRQ(ierr);
+      ierr = extendIFBox(); CHKERRQ(ierr);
       ierr = extendIFBox(); CHKERRQ(ierr);
       ierr = extendIFBox(); CHKERRQ(ierr);
       ierr = extendIFBox(); CHKERRQ(ierr);

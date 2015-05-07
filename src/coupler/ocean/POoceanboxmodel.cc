@@ -291,7 +291,7 @@ PetscErrorCode POoceanboxmodel::roundBasins(PetscInt i, PetscInt j) {
   PetscReal id_fractional = DRAINAGEmask(i,j);
   PetscInt  id = -1;
   
-  if(id_fractional-static_cast<double>(id_rounded) != 0.0){ //if id_fractional differns from integer value  
+  /*if(id_fractional-static_cast<double>(id_rounded) != 0.0){ //if id_fractional differns from integer value  
     //FIXME needs ghost comunication?
     if ((i-1 >= grid.xs) && (j-1 >= grid.ys)&& (DRAINAGEmask(i-1,j-1)-static_cast<double>(static_cast<int>(round(DRAINAGEmask(i-1,j-1)))) == 0.0)){
       id = static_cast<int>(round(DRAINAGEmask(i-1,j-1)));
@@ -307,7 +307,8 @@ PetscErrorCode POoceanboxmodel::roundBasins(PetscInt i, PetscInt j) {
     }
   } else { // if id_rounded is id_fractional
     id = id_rounded;
-  }
+  }*/
+  id = id_rounded;
 
   ierr = DRAINAGEmask.end_access();   CHKERRQ(ierr); 
 
@@ -361,6 +362,7 @@ PetscErrorCode POoceanboxmodel::computeOCEANMEANS() {
   }
 
   ierr = OCEANMEANmask.begin_access();   CHKERRQ(ierr);
+  ierr = DRAINAGEmask.begin_access();   CHKERRQ(ierr); 
   ierr = mask->begin_access();   CHKERRQ(ierr); 
   ierr = temp.begin_access();   CHKERRQ(ierr); 
   ierr = mass_flux.begin_access();   CHKERRQ(ierr); //salinitiy
@@ -387,6 +389,7 @@ PetscErrorCode POoceanboxmodel::computeOCEANMEANS() {
 
 
   ierr = OCEANMEANmask.end_access();   CHKERRQ(ierr); //FIXME necessary?
+  ierr = DRAINAGEmask.end_access();   CHKERRQ(ierr); 
   ierr = mask->end_access();   CHKERRQ(ierr);  
   ierr = temp.end_access();   CHKERRQ(ierr);  
   ierr = mass_flux.end_access();   CHKERRQ(ierr);  //salinity
@@ -438,6 +441,11 @@ PetscErrorCode POoceanboxmodel::computeOCEANMEANS() {
   } 
 
   for(int i=0;i<numberOfBasins;i++) {
+        
+    if(i>0 && m_count[i]==0){ //if basin is not dummy basin 0 and there are no cells of this basin in the OCEANMEANmask 
+      ierr = verbPrintf(2, grid.com,"PISM_WARNING: basin %d contains no cells in OCEANMEANmask, no mean salinity od temperature values are computed! \n ", i); CHKERRQ(ierr);   
+    }
+
     m_Sval[i] = m_Sval[i] / m_count[i];
     m_Tval[i] = m_Tval[i] / m_count[i]; 
     
@@ -753,9 +761,9 @@ PetscErrorCode POoceanboxmodel::identifyBOXMODELmask() {
       lcounter_box_unidentified = counter_box_unidentified;
       ierr = verbPrintf(2, grid.com,"A1b: counter_box_unidentified=%f, lcounter_box_unidentified=%f\n", counter_box_unidentified, lcounter_box_unidentified); CHKERRQ(ierr);
 
-      ierr = extendIFBox(); CHKERRQ(ierr); // FIXME size depends on how often this routine is called
-      ierr = extendIFBox(); CHKERRQ(ierr);
-      ierr = extendIFBox(); CHKERRQ(ierr);
+      //ierr = extendIFBox(); CHKERRQ(ierr); // FIXME size depends on how often this routine is called
+      //ierr = extendIFBox(); CHKERRQ(ierr);
+      //ierr = extendIFBox(); CHKERRQ(ierr);
       ierr = extendIFBox(); CHKERRQ(ierr);
       ierr = extendIFBox(); CHKERRQ(ierr);
       ierr = extendIFBox(); CHKERRQ(ierr);
@@ -773,6 +781,7 @@ PetscErrorCode POoceanboxmodel::identifyBOXMODELmask() {
       	  	ierr = verbPrintf(2, grid.com,"A1b: left over i=%d, j=%d \n", i,j); CHKERRQ(ierr);
   	  
       	  	BOXMODELmask(i,j)=box_GL;   
+            //FIXME counter für Anzahl der Groundingline boxen hochzählen!
       	}
       }
   	}
@@ -833,6 +842,11 @@ PetscErrorCode POoceanboxmodel::oceanTemperature() {
         Toc_base(i,j) = 273.15 + Toc_base_vec[shelf_id ];
       	Soc_base(i,j) =  Soc_base_vec[shelf_id ];
 
+        //! salinity and temperature for grounding line box
+        if ( Soc_base(i,j) == 0.0 || Toc_base_vec[shelf_id] == 0.0 ) {
+          ierr = verbPrintf(2, grid.com,"PISM_ERROR: Missing Soc_base and Toc_base for %d, %d, basin %d \n   Aborting... \n", i, j, shelf_id); CHKERRQ(ierr);
+          PISMEnd();
+        }
 
       	// Add temperature anomalies from given nc-file  // FIXME different nc-files for each basin!
       	if ((delta_T != NULL) && ocean_oceanboxmodel_deltaT_set) {
@@ -1074,6 +1088,8 @@ PetscErrorCode POoceanboxmodel::basalMeltRateForIceFrontBox() {
         //! salinity for calving front box
 	  	  if (k4 == 0.0) {
 	    	  ierr = verbPrintf(2, grid.com,"PISM_ERROR: Division by zero! k4=%f at %d, %d\n   Aborting... \n", k4, i, j); CHKERRQ(ierr);
+          ierr = verbPrintf(2, grid.com,"PISM_ERROR: Probably mean_overturning_in_GLbox = %f is zero, check if there is a grounding line box in basin %d , \n   ", mean_overturning_in_GLbox, shelf_id); CHKERRQ(ierr);
+          // FIXME rewrite this warning? Do not stop but calculate melt rates according to Beckmann-Gose?
 	    	  PISMEnd();
 	  	  }
 	  	  if ((0.25*PetscSqr(k5/k4) - (k6/k4)) < 0.0) {

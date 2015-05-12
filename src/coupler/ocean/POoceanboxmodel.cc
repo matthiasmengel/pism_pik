@@ -709,8 +709,13 @@ PetscErrorCode POoceanboxmodel::identifyBOXMODELmask() {
 
   ierr = verbPrintf(2, grid.com,"A1c: in identify boxmodel mask rountine\n"); CHKERRQ(ierr);
   
-  while(counter_box_unidentified > 0.0){
-      ierr = verbPrintf(2, grid.com,"A1b: counter_box_unidentified=%f\n", counter_box_unidentified); CHKERRQ(ierr);
+  PetscScalar old_cbui = counter_box_unidentified+1;
+
+  //while(counter_box_unidentified > 0.0){
+  while(counter_box_unidentified < old_cbui){
+      old_cbui = counter_box_unidentified;
+      ierr = verbPrintf(2, grid.com,"A1b: counter_box_unidentified=%.0f\n", counter_box_unidentified); CHKERRQ(ierr);
+
   	  
       ierr = extendIFBox(); CHKERRQ(ierr); // FIXME size depends on how often this routine is called
       ierr = extendIFBox(); CHKERRQ(ierr);

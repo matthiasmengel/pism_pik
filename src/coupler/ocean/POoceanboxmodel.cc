@@ -237,33 +237,43 @@ PetscErrorCode POoceanboxmodel::update(PetscReal my_t, PetscReal my_dt) {
 //! Round basin mask non integer values to an integral value of the next neigbor
 PetscErrorCode POoceanboxmodel::roundBasins(PetscInt i, PetscInt j) {
   PetscErrorCode ierr;
-
+  //FIXME: THIS routine should be applied once in init, and roundbasins should be stored as field
   ierr = basins->begin_access();   CHKERRQ(ierr);
 
-  PetscInt  id_rounded = static_cast<int>(round((*basins)(i,j)));
-  PetscReal id_fractional = (*basins)(i,j);
-  PetscInt  id = -1;
-  
-  if(id_fractional-static_cast<double>(id_rounded) != 0.0){ //if id_fractional differns from integer value  
+
+  double    id_fractional = (*basins)(i,j),
+            id_fr_ne = (*basins)(i+1,j+1),
+            id_fr_nw = (*basins)(i-1,j+1),
+            id_fr_sw = (*basins)(i-1,j-1),
+            id_fr_se = (*basins)(i+1,j-1),
+            precision = 0.0;
+
+  PetscInt id_rounded = static_cast<int>(round(id_fractional)),
+           id_ro_ne = static_cast<int>(round(id_fr_ne)),
+           id_ro_nw = static_cast<int>(round(id_fr_nw)),
+           id_ro_sw = static_cast<int>(round(id_fr_sw)),
+           id_ro_se = static_cast<int>(round(id_fr_se)),
+           id = -1;
+
+  if( PetscAbs(id_fractional - static_cast<double>(id_rounded)) > precision){ //if id_fractional differs from integer value  
     //FIXME needs ghost comunication?
-    if ((i-1 >= grid.xs) && (j-1 >= grid.ys)&& ((*basins)(i-1,j-1)-static_cast<double>(static_cast<int>(round((*basins)(i-1,j-1)))) == 0.0)){
-      id = static_cast<int>(round((*basins)(i-1,j-1)));
-    } else if((i+1 <= grid.xs+grid.xm) && (j-1 >= grid.ys)&& ((*basins)(i+1,j-1)-static_cast<double>(static_cast<int>(round((*basins)(i+1,j-1)))) == 0.0)){
-      id = static_cast<int>(round((*basins)(i+1,j-1)));
-    } else if ((i-1 >= grid.xs) && (j+1 <= grid.ys+grid.ym)&& ((*basins)(i-1,j+1)-static_cast<double>(static_cast<int>(round((*basins)(i-1,j+1)))) == 0.0)){
-      id = static_cast<int>(round((*basins)(i-1,j+1)));
-    } else if ((i+1 <= grid.xs+grid.xm) && (j+1 <= grid.ys+grid.ym)&& ((*basins)(i+1,j+1)-static_cast<double>(static_cast<int>(round((*basins)(i+1,j+1)))) == 0.0)){
-      id = static_cast<int>(round((*basins)(i+1,j+1)));
+
+    if (id_fr_sw == static_cast<double>(id_ro_sw)){
+      id = id_ro_sw;
+    } else if (id_fr_se == static_cast<double>(id_ro_se)){
+      id = id_ro_se;
+    } else if (id_fr_nw == static_cast<double>(id_ro_nw)){
+      id = id_ro_nw;
+    } else if (id_fr_ne == static_cast<double>(id_ro_ne)){
+      id = id_ro_ne;
     } else { //if no neigbour has an integer id
       id = id_rounded;
-      //ierr = verbPrintf(2, grid.com,"no neighbour has an integer id\n"); CHKERRQ(ierr);
     }
   } else { // if id_rounded is id_fractional
     id = id_rounded;
   }
-  id = id_rounded;
 
-  //ierr = DRAINAGEmask.end_access();   CHKERRQ(ierr);
+  //id = id_rounded;
   ierr = basins->end_access();   CHKERRQ(ierr); 
 
   return id;

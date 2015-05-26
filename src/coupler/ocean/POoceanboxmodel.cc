@@ -242,6 +242,7 @@ const int POoceanboxmodel::box_neighboring = -1.0; // This should never show up 
 const int POoceanboxmodel::box_noshelf = 0.0;
 const int POoceanboxmodel::box_GL = 1.0;  // ocean box covering the grounding line region
 const int POoceanboxmodel::box_IF = 2.0;  // ocean box covering the rest of the ice shelf
+const int POoceanboxmodel::box_other = 3.0;  // ice_shelf where there is no GL_box in the corresponding basin
 
 const int POoceanboxmodel::maskfloating = MASK_FLOATING;  
 const int POoceanboxmodel::maskocean = MASK_ICE_FREE_OCEAN;  
@@ -596,10 +597,11 @@ PetscErrorCode POoceanboxmodel::extentOfIceShelves() {
                                 (*mask)(i-1,j+1)<maskfloating || (*mask)(i-1,j-1)<maskfloating );
         }
 
-        if (neighbor_to_land){
+        if (neighbor_to_land ){
              // i.e. there is a grounded neighboring cell (which is not ice rise!)
             BOXMODELmask(i,j) = box_GL;
             lcounter_GLbox[roundBasins(i,j)]++;
+
         } else if ((*mask)(i,j+1)==maskocean || (*mask)(i,j-1)==maskocean || 
             (*mask)(i+1,j)==maskocean || (*mask)(i-1,j)==maskocean || 
             (*mask)(i+1,j+1)==maskocean || (*mask)(i+1,j-1)==maskocean ||
@@ -657,6 +659,7 @@ PetscErrorCode POoceanboxmodel::extendGLBox() {
   ierr = mask->begin_access();   CHKERRQ(ierr); 
   ierr = BOXMODELmask.begin_access(); CHKERRQ(ierr);
 
+
   for (PetscInt i=grid.xs; i<grid.xs+grid.xm; ++i) {
     for (PetscInt j=grid.ys; j<grid.ys+grid.ym; ++j) {
       if (BOXMODELmask(i,j)==box_unidentified && 
@@ -674,9 +677,11 @@ PetscErrorCode POoceanboxmodel::extendGLBox() {
       	  BOXMODELmask(i,j)=box_GL;
       	  lcounter_box_unidentified++; 
           lcounter_GLbox[roundBasins(i,j)]++;
+
       }
     }
   }
+
 
   ierr = DRAINAGEmask.end_access();   CHKERRQ(ierr);
   ierr = mask->end_access();   CHKERRQ(ierr); 
@@ -1085,6 +1090,12 @@ PetscErrorCode POoceanboxmodel::basalMeltRateForIceFrontBox() {
         mean_overturning_in_GLbox = mean_overturning_GLbox_vector[shelf_id];
 
 
+        if(area_GLbox==0){ // if there is no grounding line box in the current basin, set BOXMODELmask to 3 and compute basal melt rate by Beckmann-Gose
+          //ierr = verbPrintf(2, grid.com,"!!!! GLBOX =0 , basin = %d at %d,%d, \n   ", shelf_id,i,j); CHKERRQ(ierr);
+          BOXMODELmask(i,j) = box_other;
+        }
+        else{
+
         PetscScalar k1,k2,k3,k4,k5,k6;
 	  	  k1 = (area_CFbox*gamma_T_star)/(nu*lambda);                                                 // in (m^2*m/s)/(°C) = m^3/(s*°C)
 	  	  k2 = 1/(mean_overturning_in_GLbox + area_CFbox*gamma_T_star);                               // in s/m^3
@@ -1097,9 +1108,9 @@ PetscErrorCode POoceanboxmodel::basalMeltRateForIceFrontBox() {
 	  	  if (k4 == 0.0) {
 	    	  ierr = verbPrintf(2, grid.com,"PISM_ERROR: Division by zero! k4=%f at %d, %d\n   Aborting... \n", k4, i, j); CHKERRQ(ierr);
           ierr = verbPrintf(2, grid.com,"PISM_ERROR: Probably mean_overturning_in_GLbox = %f is zero, check if there is a grounding line box in basin %d , \n   ", mean_overturning_in_GLbox, shelf_id); CHKERRQ(ierr);
-          // FIXME rewrite this warning? Do not stop but calculate melt rates according to Beckmann-Gose?
-	    	  PISMEnd();
-	  	  }
+          // FIXME rewrite this warning? Do not stop but calculate melt rates according to Beckmann-Gose?	    	  
+          PISMEnd();
+	  	  } 
 	  	  if ((0.25*PetscSqr(k5/k4) - (k6/k4)) < 0.0) {
 	    	  ierr = verbPrintf(2, grid.com,"PISM_ERROR: Square-root is negative! %f at %d, %d\n...with 0.25*PetscSqr((k5/k4))=%f,(k6/k4)=%f,k5=%f,k6=%f,k4=%f\n   Aborting... \n", 0.25*PetscSqr(k5/k4) - (k6/k4), i, j,0.25*PetscSqr((k5/k4)), (k6/k4),k5,k6,k4) ; CHKERRQ(ierr);
 	    	  PISMEnd();
@@ -1118,6 +1129,7 @@ PetscErrorCode POoceanboxmodel::basalMeltRateForIceFrontBox() {
 	    	  ierr = verbPrintf(2, grid.com, "PISM_ERROR: DETECTION CFBOX: There is no neighbouring grounding line box for this calving front box at %d,%d! \nThis will lead to a zero k4 and in turn to NaN in Soc, Toc_inCelsius and basalmeltrate_shelf. After the next massContExplicitStep(), H will be NaN, too! This will cause ks in temperatureStep() to be NaN and lead to a Segmentation Violation! \nIn particular: basin_id=%f, BOXMODELmask=%f, H=%f, T_star=%f, \narea_GLbox=%e, area_CFbox=%e, mean_salinity_in_GLbox=%f, mean_meltrate_in_GLbox=%e, mean_overturning_in_GLbox=%e, \nk1=%e,k2=%e,k3=%e,k4=%e,k5=%e,k6=%e, \nToc_base=%f, Toc_anomaly=%f, Toc_inCelsius=%f, Toc=%f, Soc_base=%f, Soc=%f, basalmeltrate_shelf=%e \n   Aborting... \n", i,j, DRAINAGEmask(i,j), BOXMODELmask(i,j), (*ice_thickness)(i,j), T_star(i,j), area_GLbox,area_CFbox,mean_salinity_in_GLbox,mean_meltrate_in_GLbox,mean_overturning_in_GLbox,k1,k2,k3,k4,k5,k6, Toc_base(i,j), Toc_anomaly(i,j), Toc_inCelsius(i,j), Toc(i,j), Soc_base(i,j), Soc(i,j), basalmeltrate_shelf(i,j)); CHKERRQ(ierr);
 	    	  PISMEnd();
 	  	  }
+        }
       } // NOTE NO else-case, since  basalMeltRateForGroundingLineBox() and basalMeltRateForOtherShelves() cover all other cases and we would overwrite those results here.
     } // end j
   } // end i
@@ -1146,55 +1158,47 @@ PetscErrorCode POoceanboxmodel::basalMeltRateForOtherShelves() {
   PetscErrorCode ierr;
   ierr = verbPrintf(2, grid.com,"B3 : in bm others rountine\n"); CHKERRQ(ierr);
 
-  const PetscScalar rhoi = config.get("ice_density");
-  const PetscScalar rhow = config.get("sea_water_density");
-  const PetscScalar latentHeat = config.get("water_latent_heat_fusion");
-  const PetscScalar c_p_ocean	 = 3974.0;       // J/(K*kg), specific heat capacity of ocean mixed layer
-  const PetscScalar gamma_T = 0.178567865873;  // FIXME!!!! (Wrong value!) FIXME config
-  const PetscScalar meltFactor = 0.002; // FIXME!!!! (Wrong value!) FIXME config
 
   ierr = ice_thickness->begin_access(); CHKERRQ(ierr);
   ierr = DRAINAGEmask.begin_access(); CHKERRQ(ierr);
+  ierr = BOXMODELmask.begin_access(); CHKERRQ(ierr);
   ierr = Toc_base.begin_access(); CHKERRQ(ierr);
   ierr = Toc_anomaly.begin_access(); CHKERRQ(ierr);
   ierr = Toc_inCelsius.begin_access(); CHKERRQ(ierr);
   ierr = Toc.begin_access(); CHKERRQ(ierr);
   ierr = overturning.begin_access(); CHKERRQ(ierr);
   ierr = basalmeltrate_shelf.begin_access(); CHKERRQ(ierr); // NOTE meltrate has units:   J m-2 s-1 / (J kg-1 * kg m-3) = m s-1
-
+  ierr = heatflux.begin_access(); CHKERRQ(ierr);
 
   for (PetscInt i=grid.xs; i<grid.xs+grid.xm; ++i) {
     for (PetscInt j=grid.ys; j<grid.ys+grid.ym; ++j) {
 
       PetscInt shelf_id = roundBasins(i,j);
 
-      /*OLD
-      if (SHELFmask(i,j) == shelf_RossSea || SHELFmask(i,j) == shelf_WeddellSea || 
-          SHELFmask(i,j) == shelf_EastAntarctica || SHELFmask(i,j) == shelf_AmundsenSea){
-      OLD*/
-      if (shelf_id > 0.0){
-        Toc(i,j) = 273.15 + Toc_inCelsius(i,j) + Toc_anomaly(i,j);} // in K  // FIXME I think Toc should not occur in any of the routines before!
+      if (shelf_id == noshelf) { // boundary of computational domain
+        basalmeltrate_shelf(i,j) = 0.0;
 
-      /*OLD
-      else if (SHELFmask(i,j) == shelf_unidentified){
-      OLD*/
-      else if (shelf_id == shelf_unidentified){
+      } 
+      else if (BOXMODELmask(i,j)==box_other ){
 		    Toc(i,j) = Toc_base(i,j) + Toc_anomaly(i,j); // in K, NOTE: Toc_base is already in K, so no (+273.15)
 		    // default: compute the melt rate from the temperature field according to beckmann_goosse03 (see below)
-		    const PetscScalar shelfbaseelev = - (rhoi / rhow) * (*ice_thickness)(i,j);
+		    const PetscScalar rhoi = config.get("ice_density");
+        const PetscScalar rhow = config.get("sea_water_density");
+        const PetscScalar latentHeat = config.get("water_latent_heat_fusion");
+
+        const PetscScalar shelfbaseelev = - (rhoi / rhow) * (*ice_thickness)(i,j);
 	      const PetscScalar c_p_ocean = 3974.0;       // J/(K*kg), specific heat capacity of ocean mixed layer
         const PetscScalar gamma_T   = 1e-4;     // m/s, thermal exchange velocity
+        const PetscScalar meltFactor = 0.002; // FIXME!!!! (Wrong value!) FIXME config
+
         PetscScalar T_f = 273.15 + (0.0939 -0.057*35.0 + 7.64e-4* shelfbaseelev); // add 273.15 to get it in Kelvin... 35 is the salinity
 		    heatflux(i,j) = meltFactor * rhow * c_p_ocean * gamma_T * (Toc(i,j) - T_f);  // in W/m^2
 		    basalmeltrate_shelf(i,j) = heatflux(i,j) / (latentHeat * rhoi); // in m s-1
 
-        /*OLD
-      } else if (SHELFmask(i,j) == noshelf) {
-        OLD*/
-      } else if (shelf_id == noshelf) {
-		    basalmeltrate_shelf(i,j) = 0.0;
-
-      } else { // This must not happen, since SHELFmask needs to be one of the abovenoshelf
+      } 
+      else if (shelf_id > 0.0){
+        Toc(i,j) = 273.15 + Toc_inCelsius(i,j) + Toc_anomaly(i,j);} // in K  // FIXME I think Toc should not occur in any of the routines before!
+      else { // This must not happen
 		    ierr = verbPrintf(2, grid.com,"PISM_ERROR: [rank %d] at %d, %d  -- basins(i,j)=%f causes problems.\n   Aborting... \n",grid.rank, i, j, DRAINAGEmask(i,j)); CHKERRQ(ierr);
 		    PISMEnd();
       }
@@ -1203,6 +1207,7 @@ PetscErrorCode POoceanboxmodel::basalMeltRateForOtherShelves() {
 
 
   ierr = DRAINAGEmask.end_access(); CHKERRQ(ierr);
+  ierr = BOXMODELmask.end_access(); CHKERRQ(ierr);
   ierr = ice_thickness->end_access(); CHKERRQ(ierr);
   ierr = Toc_base.end_access(); CHKERRQ(ierr);
   ierr = Toc_anomaly.end_access(); CHKERRQ(ierr);
@@ -1210,6 +1215,7 @@ PetscErrorCode POoceanboxmodel::basalMeltRateForOtherShelves() {
   ierr = Toc.end_access(); CHKERRQ(ierr);
   ierr = overturning.end_access(); CHKERRQ(ierr);
   ierr = basalmeltrate_shelf.end_access(); CHKERRQ(ierr);
+  ierr = heatflux.end_access(); CHKERRQ(ierr);
 
   return 0;
 }

@@ -89,7 +89,7 @@ protected:
   Timeseries *delta_T;
 
   static const int shelf_unidentified, noshelf;
-  static const int box_unidentified, box_noshelf, box_GL, box_neighboring, box_IF, maskfloating, maskocean, maskgrounded;
+  static const int box_unidentified, box_noshelf, box_GL, box_neighboring, box_IF, box_other, maskfloating, maskocean, maskgrounded;
 
   PetscInt numberOfBasins;
 

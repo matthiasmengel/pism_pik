@@ -746,6 +746,9 @@ PetscErrorCode set_config_from_options(MPI_Comm /*com*/, NCConfigVariable &confi
   ierr = config.scalar_from_option("gamma_T", "gamma_T"); CHKERRQ(ierr);
   ierr = config.scalar_from_option("gamma_S", "gamma_S"); CHKERRQ(ierr);
 
+  // Ocean model "oceanboxmodel"
+  ierr = config.scalar_from_option("continental_shelf_depth", "continental_shelf_depth"); CHKERRQ(ierr);
+
   // gl fix
   ierr = config.flag_from_option("no_gl_fix", "avoid_gl_fix"); CHKERRQ(ierr);
 

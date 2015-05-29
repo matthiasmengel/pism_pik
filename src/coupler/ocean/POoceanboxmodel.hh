@@ -76,19 +76,18 @@ public:
   virtual PetscErrorCode write_variables(set<string> vars, string filename); // FIXME included by Ronja to write the variables to extra files. Is there a smarter way?
 
 protected:
-  IceModelVec2S *ice_thickness, *topg, *lat, *lon, *basins;	// not owned by this class
+  IceModelVec2S *ice_thickness, *topg, *basins;	// not owned by this class 
 
   IceModelVec2Int *mask;  // not owned by this class
 
-  IceModelVec2S ICERISESmask, BOXMODELmask, DRAINAGEmask, OCEANMEANmask, CHECKmask, //FIXME delete CHECKmask
+  IceModelVec2S ICERISESmask, BOXMODELmask, OCEANMEANmask, CHECKmask, //FIXME delete CHECKmask, OCEANMEANmask
                 Soc, Soc_base, Toc, Toc_base, Toc_inCelsius, T_star, 
                 Toc_anomaly, overturning, heatflux, basalmeltrate_shelf;
 
-  bool ocean_oceanboxmodel_deltaT_set, drainageBasins_set, drainageBasins_OH10_set, exicerises_set;
+  bool ocean_oceanboxmodel_deltaT_set, exicerises_set, continental_shelf_depth_set;
 
   Timeseries *delta_T;
 
-  static const int shelf_unidentified, noshelf;
   static const int box_unidentified, box_noshelf, box_GL, box_neighboring, box_IF, box_other, maskfloating, maskocean, maskgrounded;
 
   PetscInt numberOfBasins;
@@ -97,7 +96,8 @@ protected:
                   counter_GLbox,
                   counter_CFbox,
                   k_basins;
-  PetscScalar     counter_box_unidentified; 
+  PetscScalar     counter_box_unidentified,
+                  continental_shelf_depth; 
 
   vector<double>  mean_salinity_GLbox_vector,
                   mean_meltrate_GLbox_vector,

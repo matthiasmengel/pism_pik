@@ -57,7 +57,7 @@ PetscErrorCode POoceanboxmodel::init(PISMVars &vars) {
   ierr = ICERISESmask.set_attrs("model_state", "mask displaying ice rises","", ""); CHKERRQ(ierr);
   ierr = PISMOptionsIsSet("-exclude_icerises", exicerises_set); CHKERRQ(ierr);
 
-  // mask to calculate the mean salinity and ocean temperature in front of each basin 
+  // mask displaying continental shelf - region where mean salinity and ocean temperature is calculated
   ierr = OCEANMEANmask.create(grid, "OCEANMEANmask", true); CHKERRQ(ierr);
   ierr = OCEANMEANmask.set_attrs("model_state", "mask displaying ocean region for parameter input","", ""); CHKERRQ(ierr);
 
@@ -65,6 +65,15 @@ PetscErrorCode POoceanboxmodel::init(PISMVars &vars) {
   ierr = CHECKmask.create(grid, "CHECKmask", true); CHKERRQ(ierr);
   ierr = CHECKmask.set_attrs("model_state", "mask displaying rounded basins","", ""); CHKERRQ(ierr);
 
+  // continental shelf depth // FIXME -800 might be too high for Antacrtica
+  continental_shelf_depth = config.get("continental_shelf_depth");
+  //if option -continental_shelf_depth is set, print value of continental_shelf_depth
+  ierr = PISMOptionsIsSet("-continental_shelf_depth", continental_shelf_depth_set); CHKERRQ(ierr);
+  if (continental_shelf_depth_set) {
+    ierr = verbPrintf(2, grid.com,
+                      "  Depth of continental shelf for computation of temperature and salinity input\n"
+                      "  is set for whole domain to continental_shelf_depth=%f meter\n", continental_shelf_depth); CHKERRQ(ierr);
+  }
 
   // salinity
   ierr = Soc.create(grid, "Soc", true); CHKERRQ(ierr);
@@ -106,12 +115,6 @@ PetscErrorCode POoceanboxmodel::init(PISMVars &vars) {
 
   topg = dynamic_cast<IceModelVec2S*>(vars.get("bedrock_altitude"));
   if (topg == NULL) SETERRQ(grid.com, 1, "bedrock topography is not available");
-
-  lat = dynamic_cast<IceModelVec2S*>(vars.get("latitude"));
-  if (lat == NULL) SETERRQ(grid.com, 1, "latitude is not available");
-
-  lon = dynamic_cast<IceModelVec2S*>(vars.get("longitude"));
-  if (!lon) { SETERRQ(grid.com, 1, "ERROR: longitude is not available"); }
 
   mask = dynamic_cast<IceModelVec2Int*>(vars.get("mask"));
   if (!mask) { SETERRQ(grid.com, 1, "ERROR: mask is not available"); }
@@ -170,17 +173,13 @@ PetscErrorCode POoceanboxmodel::init(PISMVars &vars) {
   mean_meltrate_GLbox_vector.resize(numberOfBasins);
   mean_overturning_GLbox_vector.resize(numberOfBasins);
 
-
-  //FIXME calculate the number of basins 
-  
-  
   for(int i=0;i<numberOfBasins;i++) {
       Toc_base_vec[i] = -1.5; //dummy, FIXME why these values? 
       Soc_base_vec[i] = 34.5; //dummy
       gamma_T_star_vec[i]= gamma_T; 
       C_vec[i]           = value_C;
       if(i==1){
-        ierr = verbPrintf(2, grid.com,"Using %d drainage basins and default values: gamma_T_star= %f, C = %f, calculate Soc and Toc from thetao and salinity...\n ", numberOfBasins, gamma_T_star_vec[i], C_vec[i]  ); CHKERRQ(ierr);       
+        ierr = verbPrintf(2, grid.com,"  Using %d drainage basins and default values: \n gamma_T_star= %f, C = %f, calculate Soc and Toc from thetao and salinity...\n ", numberOfBasins, gamma_T_star_vec[i], C_vec[i]  ); CHKERRQ(ierr);       
       }
   }
 
@@ -188,15 +187,12 @@ PetscErrorCode POoceanboxmodel::init(PISMVars &vars) {
   return 0;
 }
 
-const int POoceanboxmodel::shelf_unidentified = -99.0; // FIXME clean up and delete This should never show up in the .nc-files.
-const int POoceanboxmodel::noshelf = 0.0; // FIXME clean up and delete 
-
 const int POoceanboxmodel::box_unidentified = -99.0;     // This should never show up in the .nc-files.
 const int POoceanboxmodel::box_neighboring = -1.0; // This should never show up in the .nc-files.
 const int POoceanboxmodel::box_noshelf = 0.0;
 const int POoceanboxmodel::box_GL = 1.0;  // ocean box covering the grounding line region
 const int POoceanboxmodel::box_IF = 2.0;  // ocean box covering the rest of the ice shelf
-const int POoceanboxmodel::box_other = 3.0;  // ice_shelf where there is no GL_box in the corresponding basin
+const int POoceanboxmodel::box_other = 3.0;  // ice_shelf but there is no GL_box in the corresponding basin
 
 const int POoceanboxmodel::maskfloating = MASK_FLOATING;  
 const int POoceanboxmodel::maskocean = MASK_ICE_FREE_OCEAN;  
@@ -281,24 +277,73 @@ PetscErrorCode POoceanboxmodel::roundBasins(PetscInt i, PetscInt j) {
 
 //! When ocean_given is set compute mean salinity and temperature in each basin.
 PetscErrorCode POoceanboxmodel::computeOCEANMEANS() {
-  /*NOTE: 
-  -basin 0 (which is not existing) is the margin of the domain-it has currently seven boxes which lie in the OCEANMEANmask
-    -> shall we exclude this case? Or do we continue with it, e.g. for the case of just one basin?
-  -we call this rountine before we call extentOfIceShelves, where the Drainage mask is set to basins' values. 
-    -> should we use basins instead? Or define the drainage mask earlier? This could be the reason why
-  -during the initialisation we have wrong values for the salinity and temperature
-  -currently, by iterating, we may include ocean cells which neighbor directly bedrock or grounded ice
-    -> do we want to exclude them?
-  -how big do we want to have the region over which we calculate the ocean means? 
-    -> search in literature? currently 200km
-  -currently we enter this routine for all calculations
-    -> do we want to have an if(there is an ocean filed) {call routine?}
-  -check the values for basin 14 (there are just 6 cells in the mask): Calculation is correct!
-  */
+  // FIXME currently the mean is also calculated over submarine islands which are higher than continental_shelf_depth
 
   PetscErrorCode ierr;
   ierr = verbPrintf(4, grid.com,"0a : in computeOCEANMEANS routine \n"); CHKERRQ(ierr);
 
+  PetscScalar lm_count[numberOfBasins]; //count cells to take mean over for each basin
+  PetscScalar m_count[numberOfBasins];
+  PetscScalar lm_Sval[numberOfBasins]; //add salinity for each basin
+  PetscScalar lm_Tval[numberOfBasins]; //add temperature for each basin
+  PetscScalar m_Tval[numberOfBasins]; 
+  PetscScalar m_Sval[numberOfBasins]; 
+
+  for(int k=0;k<numberOfBasins;k++){
+    m_count[k]=0.0;
+    lm_count[k]=0.0;
+    lm_Sval[k]=0.0;
+    lm_Tval[k]=0.0;
+    m_Tval[k]=0.0; 
+    m_Sval[k]=0.0;
+  }
+
+  ierr = OCEANMEANmask.begin_access();   CHKERRQ(ierr); 
+  ierr = mask->begin_access();   CHKERRQ(ierr); 
+  ierr = temp.begin_access();   CHKERRQ(ierr); 
+  ierr = mass_flux.begin_access();   CHKERRQ(ierr); //salinitiy
+  ierr = topg->begin_access(); CHKERRQ(ierr);
+
+  for (PetscInt i=grid.xs; i<grid.xs+grid.xm; ++i) {
+      for (PetscInt j=grid.ys; j<grid.ys+grid.ym; ++j) {
+        if ((*mask)(i,j)==maskocean && (*topg)(i,j)>=continental_shelf_depth ){ // if the cell is ocean and on the continental shelf, FIXME: take also ocean below ice-shelves into account?
+            PetscInt shelf_id = roundBasins(i,j);
+            lm_count[shelf_id]+=1;
+            lm_Sval[shelf_id]+=mass_flux(i,j);
+            lm_Tval[shelf_id]+=temp(i,j);
+            OCEANMEANmask(i,j) = 2.0; //FIMXE this is not necessary -> destroy OCEANMEANmask()?
+        } //if
+      } //j
+    } //i
+  
+  ierr = OCEANMEANmask.end_access();   CHKERRQ(ierr); 
+  ierr = mask->end_access();   CHKERRQ(ierr);  
+  ierr = temp.end_access();   CHKERRQ(ierr);  
+  ierr = mass_flux.end_access();   CHKERRQ(ierr);  //salinity
+  ierr = topg->end_access(); CHKERRQ(ierr);
+  
+  for(int i=0;i<numberOfBasins;i++) {
+    ierr = PISMGlobalSum(&lm_count[i], &m_count[i], grid.com); CHKERRQ(ierr);
+    ierr = PISMGlobalSum(&lm_Sval[i], &m_Sval[i], grid.com); CHKERRQ(ierr);
+    ierr = PISMGlobalSum(&lm_Tval[i], &m_Tval[i], grid.com); CHKERRQ(ierr);
+  } 
+
+  for(int i=0;i<numberOfBasins;i++) {
+        
+    if(i>0 && m_count[i]==0){ //if basin is not dummy basin 0 or there are no ocean cells in this basin to take the mean over.
+      ierr = verbPrintf(2, grid.com,"PISM_WARNING: basin %d contains no ocean mean cells, no mean salinity od temperature values are computed! \n ", i); CHKERRQ(ierr);   
+    } else {
+      m_Sval[i] = m_Sval[i] / m_count[i];
+      m_Tval[i] = m_Tval[i] / m_count[i]; 
+    
+      Toc_base_vec[i]=m_Tval[i] - 273.15;
+      Soc_base_vec[i]=m_Sval[i];
+      ierr = verbPrintf(4, grid.com,"0: basin= %d, temp =%.3f, salinity=%.3f\n", i, Toc_base_vec[i], Soc_base_vec[i]); CHKERRQ(ierr);
+    }
+  }
+
+
+  /* NOTE: olöd routine which calculates an range of 200km ....
   PetscInt number_of_iterations = 0; // to get circa 200km before the ice shelf, FIXME do we want this to be chosable?
   number_of_iterations = round(200e3 / ((grid.dx +grid.dy)/2.0)); // meter 
   //ierr = verbPrintf(2, grid.com,"0a  : number of Iterations = %d , %f\n", number_of_iterations, 200e3 / ((grid.dx +grid.dy)/2.0)); CHKERRQ(ierr);
@@ -410,9 +455,9 @@ PetscErrorCode POoceanboxmodel::computeOCEANMEANS() {
     Toc_base_vec[i]=m_Tval[i] - 273.15;
     Soc_base_vec[i]=m_Sval[i];
     ierr = verbPrintf(5, grid.com,"0: basin= %d, temp =%.3f, salinity=%.3f\n", i, Toc_base_vec[i], Soc_base_vec[i]); CHKERRQ(ierr);
-  } 
+  } */
 
-  /* FIXME use 'old' temperature and salinity values
+  /* FIXME use FIXED 'old' temperature and salinity values 
   // values from Ricas code
   const PetscScalar Toc_base_vec_OH10[18]={0.0, -1.8344, -1.8344, -1.8344, -1.8344, -1.8344, -1.8344, -1.8344, -1.8475, 0.8427, 0.8427, 0.8427, 0.8427, 0.8427, -1.8464, -1.8464, -1.8464, -1.8464};  // degree Celsius
   const PetscScalar Soc_base_vec_OH10[18]={0.0,34.55,34.55,34.55,34.55,34.55,34.55,34.55, 34.83, 34.67,34.67,34.67,34.67,34.67, 34.74,34.74,34.74,34.74}; // psu
@@ -430,7 +475,8 @@ PetscErrorCode POoceanboxmodel::computeOCEANMEANS() {
     Soc_base_vec[i]=Soc_base_vec_OH10[i];
     C_vec[i]= 1.0e6;//C_vec_OH10[i];
     gamma_T_star_vec[i]= 1.0e-5 ;//gamma_T_star_vec_OH10[i];
-  }*/
+  } */
+
   return 0;
 }
 
@@ -522,10 +568,8 @@ PetscErrorCode POoceanboxmodel::identifyICERISES() {
 
 
 
-//! Compute the extent of the ice shelves of each basin/region (i.e. counter)
-/*  Start to fill in the BOXMODELmask: -identify the boxes directly at the groundingline
-                                       -identify the boxes directly at the calving front 
-                                       -Set all other shelf_boxes to shelf_unidentified*/
+//! Compute the extent of the ice shelves of each basin/region (i.e. counter) and find grounding line and calving front in BOXMODELmask
+
 PetscErrorCode POoceanboxmodel::extentOfIceShelves() {
   
   PetscErrorCode ierr;
@@ -647,7 +691,6 @@ PetscErrorCode POoceanboxmodel::extendGLBox() {
   }
 
 
-  ierr = DRAINAGEmask.end_access();   CHKERRQ(ierr);
   ierr = mask->end_access();   CHKERRQ(ierr); 
   ierr = BOXMODELmask.end_access(); CHKERRQ(ierr);
   ierr = BOXMODELmask.beginGhostComm(); CHKERRQ(ierr);
@@ -741,7 +784,7 @@ PetscErrorCode POoceanboxmodel::identifyBOXMODELmask() {
 
   }
 
-  // FIXME How to handle these shelf-lakes (shelf which lies in the sheet), at the moment: GL_Box, better: Beckmann-Goose or no melting at all?
+  // FIXME How to handle shelf-lakes (shelf which lies in the sheet), at the moment: GL_Box, better: Beckmann-Goose or no melting at all?
   if(counter_box_unidentified>0.0){ //if there are still floating cells which were not labels before, i.e. a shelf connected to an island (in the ex_icerises case)
   	
     ierr = BOXMODELmask.begin_access(); CHKERRQ(ierr);
@@ -788,10 +831,7 @@ PetscErrorCode POoceanboxmodel::identifyBOXMODELmask() {
 Compute ocean temperature outside of the ice shelf cavities.
 */
 PetscErrorCode POoceanboxmodel::oceanTemperature() { 
-	/* IN THIS ROUTINE
-	Before: Set the ocean temperature in front of the ice shelf for each region (This is T_0 in the paper). Note that here, we have a field.
-	Want: Set the ocean temperature in front of the ice shelf for each basin (This is T_0 in the paper). Note that here, we have a field.
-	TODO : calculate the mean over the ocean temperature in front of the ice shelf for each basin*/
+
   PetscErrorCode ierr;
   ierr = verbPrintf(4, grid.com,"A2 : in ocean temp rountine\n"); CHKERRQ(ierr);
 
@@ -1130,7 +1170,7 @@ PetscErrorCode POoceanboxmodel::basalMeltRateForOtherShelves() {
 
       PetscInt shelf_id = roundBasins(i,j);
 
-      if (shelf_id == noshelf) { // boundary of computational domain
+      if (shelf_id == 0) { // boundary of computational domain
         basalmeltrate_shelf(i,j) = 0.0;
 
       } 

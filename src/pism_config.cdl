@@ -295,6 +295,9 @@ netcdf pism_config {
     pism_config:gamma_S = 5.05e-7;
     pism_config:gamma_S_doc = "m s-1; Turbulent salt exchange coefficient used in ocean component '-ocean th'. Default value from Hellmer and Olbers 89.";
 
+    pism_config:continental_shelf_depth = -800.0;
+    pism_config:continental_shelf_depth_doc = "m; depth of continental shelf in temperature and salinity calculation in '-ocean oceanboxmodel'.";
+
     // for next constants, note (VELOCITY/LENGTH)^2  is very close to 10^-27; compare "\epsilon^2/L^2" which
     // appears in formula (4.1) in C. Schoof 2006 "A variational approach to ice streams" J Fluid Mech 556 pp 227--251
     pism_config:plastic_regularization = 0.01;

@@ -22,7 +22,6 @@
 #include "IceGrid.hh"
 #include "pism_options.hh"
 
-
 /*!
  The aim of these routines is to simulate the ocean circulation underneath the ice shelves and compute the basal melt/refreezing rates according to the ocean box model described in olbers_hellmer10.
 */
@@ -242,12 +241,11 @@ PetscErrorCode POoceanboxmodel::roundBasins(PetscInt i, PetscInt j) {
   ierr = basins->begin_access();   CHKERRQ(ierr);
 
 
-  double    id_fractional = (*basins)(i,j),
+  float    id_fractional = (*basins)(i,j),
             id_fr_ne = (*basins)(i+1,j+1),
             id_fr_nw = (*basins)(i-1,j+1),
             id_fr_sw = (*basins)(i-1,j-1),
-            id_fr_se = (*basins)(i+1,j-1),
-            precision = 0.0;
+            id_fr_se = (*basins)(i+1,j-1);
 
   PetscInt id_rounded = static_cast<int>(round(id_fractional)),
            id_ro_ne = static_cast<int>(round(id_fr_ne)),
@@ -255,26 +253,25 @@ PetscErrorCode POoceanboxmodel::roundBasins(PetscInt i, PetscInt j) {
            id_ro_sw = static_cast<int>(round(id_fr_sw)),
            id_ro_se = static_cast<int>(round(id_fr_se)),
            id = -1;
-
-  if( PetscAbs(id_fractional - static_cast<double>(id_rounded)) > precision){ //if id_fractional differs from integer value  
+  
+  if( PetscAbs(id_fractional - static_cast<float>(id_rounded)) > 0.0){ //if id_fractional differs from integer value  
     //FIXME needs ghost comunication?
-
-    if (id_fr_sw == static_cast<double>(id_ro_sw)){
+    
+    if (id_fr_sw == static_cast<float>(id_ro_sw) && id_fr_sw != 0){ 
       id = id_ro_sw;
-    } else if (id_fr_se == static_cast<double>(id_ro_se)){
+    } else if (id_fr_se == static_cast<float>(id_ro_se) && id_fr_se != 0){ 
       id = id_ro_se;
-    } else if (id_fr_nw == static_cast<double>(id_ro_nw)){
+    } else if (id_fr_nw == static_cast<float>(id_ro_nw) && id_fr_nw != 0){ 
       id = id_ro_nw;
-    } else if (id_fr_ne == static_cast<double>(id_ro_ne)){
+    } else if (id_fr_ne == static_cast<float>(id_ro_ne) && id_fr_ne != 0){ 
       id = id_ro_ne;
     } else { //if no neigbour has an integer id
       id = id_rounded;
     }
-  } else { // if id_rounded is id_fractional
+  } else { // if id_rounded == id_fractional
     id = id_rounded;
   }
 
-  //id = id_rounded;
   ierr = basins->end_access();   CHKERRQ(ierr); 
 
   return id;
@@ -415,6 +412,25 @@ PetscErrorCode POoceanboxmodel::computeOCEANMEANS() {
     ierr = verbPrintf(5, grid.com,"0: basin= %d, temp =%.3f, salinity=%.3f\n", i, Toc_base_vec[i], Soc_base_vec[i]); CHKERRQ(ierr);
   } 
 
+  /* FIXME use 'old' temperature and salinity values
+  // values from Ricas code
+  const PetscScalar Toc_base_vec_OH10[18]={0.0, -1.8344, -1.8344, -1.8344, -1.8344, -1.8344, -1.8344, -1.8344, -1.8475, 0.8427, 0.8427, 0.8427, 0.8427, 0.8427, -1.8464, -1.8464, -1.8464, -1.8464};  // degree Celsius
+  const PetscScalar Soc_base_vec_OH10[18]={0.0,34.55,34.55,34.55,34.55,34.55,34.55,34.55, 34.83, 34.67,34.67,34.67,34.67,34.67, 34.74,34.74,34.74,34.74}; // psu
+  //const PetscScalar gamma_T_star_vec_OH10[18]={0.0, 1.12915e-06, 1.12915e-06,1.12915e-06,1.12915e-06,1.12915e-06,1.12915e-06,1.12915e-06, 4.5080e-07, 1.78144e-05,1.78144e-05,1.78144e-05,1.78144e-05,1.78144e-05, 1.40532e-06,1.40532e-06,1.40532e-06,1.40532e-06};// meter per second
+  //const PetscScalar C_vec_OH10[18]={0.0, 8e6,8e6,8e6,8e6,8e6,8e6,8e6, 10e6, 3e6,3e6,3e6,3e6,3e6, 2e6,2e6,2e6,2e6}; //unitless
+  
+  // values from Paper, note: C is not given except for PIG: 1.2
+  //const PetscScalar Toc_base_vec_OH10[18]={0.0, -1.5, -1.5, -1.8, -1.5, -1.5, -1.5, -1.5, -1.7, 0.62, 1.1, -1.5, -1.5, -1.5, -1.5, -1.8375, -1.5, -0.02};  // degree Celsius
+  //const PetscScalar Soc_base_vec_OH10[18]={0.0, 34.5, 34.5, 34.55, 34.5, 34.5, 34.5, 34.5, 34.825, 34.595, 34.67, 34.5, 34.5, 34.5, 34.5, 34.73, 34.5, 34.35}; // psu
+  //const PetscScalar C_vec_OH10[18]={0.0, 1.0e6, 1.0e6, 1.0e6, 1.0e6, 1.0e6, 1.0e6, 1.0e6, 1.0e6, 1.0e6, 1.0e6, 1.0e6, 1.0e6, 1.0e6, 1.0e6, 1.0e6, 1.0e6, 1.0e6}; // psu
+  //const PetscScalar gamma_T_star_vec_OH10[18]={0.0, 1.0e-5, 1.0e-5, 1.0e-5, 1.0e-5, 1.0e-5, 1.0e-5, 1.0e-5, 1.0e-5, 1.0e-5, 3.0e-5, 1.0e-5, 1.0e-5, 1.0e-5, 1.0e-5, 1.0e-5, 1.0e-5, 1.0e-5}; // psu
+  
+  for (int i=0;i<numberOfBasins;i++){
+    Toc_base_vec[i]=Toc_base_vec_OH10[i];
+    Soc_base_vec[i]=Soc_base_vec_OH10[i];
+    C_vec[i]= 1.0e6;//C_vec_OH10[i];
+    gamma_T_star_vec[i]= 1.0e-5 ;//gamma_T_star_vec_OH10[i];
+  }*/
   return 0;
 }
 
@@ -725,17 +741,28 @@ PetscErrorCode POoceanboxmodel::identifyBOXMODELmask() {
 
   }
 
+  // FIXME How to handle these shelf-lakes (shelf which lies in the sheet), at the moment: GL_Box, better: Beckmann-Goose or no melting at all?
   if(counter_box_unidentified>0.0){ //if there are still floating cells which were not labels before, i.e. a shelf connected to an island (in the ex_icerises case)
-  	ierr = BOXMODELmask.begin_access(); CHKERRQ(ierr);
-  	for (PetscInt i=grid.xs; i<grid.xs+grid.xm; ++i) {
+  	
+    ierr = BOXMODELmask.begin_access(); CHKERRQ(ierr);
+    PetscScalar lcounter_GLbox[numberOfBasins];
+    PetscScalar all_counter_GLbox[numberOfBasins];
+    for (int i=0;i<numberOfBasins;i++){ lcounter_GLbox[i]=0.0; all_counter_GLbox[i]=0.0; }; 
+  	
+    for (PetscInt i=grid.xs; i<grid.xs+grid.xm; ++i) {
       for (PetscInt j=grid.ys; j<grid.ys+grid.ym; ++j) {
         if (BOXMODELmask(i,j)==box_unidentified ){ // i.e. this is an unidentified shelf cell with a neighbor that is in the IFbox
       	  	ierr = verbPrintf(4, grid.com,"A1b: left over i=%d, j=%d \n", i,j); CHKERRQ(ierr);
       	  	BOXMODELmask(i,j)=box_GL;   
-            //FIXME counter für Anzahl der Groundingline boxen hochzählen!
+            lcounter_GLbox[roundBasins(i,j)]++;
       	}
       }
   	}
+    
+    for(int i=0;i<numberOfBasins;i++) { 
+      ierr = PISMGlobalSum(&lcounter_GLbox[i], &all_counter_GLbox[i], grid.com); CHKERRQ(ierr);
+      counter_GLbox[i] += all_counter_GLbox[i];
+    } 
   	ierr = BOXMODELmask.end_access(); CHKERRQ(ierr);
   }
 

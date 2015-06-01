@@ -59,8 +59,8 @@ public:
     return 0;
   }
   virtual PetscErrorCode roundBasins(PetscInt i, PetscInt j);
+  virtual PetscErrorCode identifyMASK(IceModelVec2S &inputmask, string masktype);
   virtual PetscErrorCode computeOCEANMEANS();
-  virtual PetscErrorCode identifyICERISES();
   virtual PetscErrorCode extentOfIceShelves();
   virtual PetscErrorCode identifyBOXMODELmask();
   virtual PetscErrorCode extendGLBox();

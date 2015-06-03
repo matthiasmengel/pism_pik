@@ -80,15 +80,40 @@ protected:
 
   IceModelVec2Int *mask;  // not owned by this class
 
-  IceModelVec2S ICERISESmask, BOXMODELmask, OCEANMEANmask, CHECKmask, //FIXME delete CHECKmask, OCEANMEANmask
-                Soc, Soc_base, Toc, Toc_base, Toc_inCelsius, T_star, 
-                Toc_anomaly, overturning, heatflux, basalmeltrate_shelf;
+  IceModelVec2S ICERISESmask, 
+                BOXMODELmask, 
+                OCEANMEANmask, //FIXME delete OCEANMEANmask
+                CHECKmask, //FIXME delete CHECKmask
+                Soc, 
+                Soc_base, 
+                Toc, 
+                Toc_base, 
+                Toc_inCelsius, 
+                T_star, 
+                Toc_anomaly, 
+                overturning, 
+                heatflux, 
+                basalmeltrate_shelf;
 
   bool ocean_oceanboxmodel_deltaT_set, exicerises_set, continental_shelf_depth_set;
 
   Timeseries *delta_T;
 
-  static const int box_unidentified, box_noshelf, box_GL, box_neighboring, box_IF, box_other, maskfloating, maskocean, maskgrounded;
+  static const int  box_unidentified, 
+                    box_noshelf, 
+                    box_GL, 
+                    box_neighboring, 
+                    box_IF, 
+                    box_other, 
+
+                    maskfloating, 
+                    maskocean, 
+                    maskgrounded,
+
+                    imask_inner,
+                    imask_outer,
+                    imask_exclude,
+                    imask_unidentified;
 
   PetscInt numberOfBasins;
 
@@ -96,6 +121,7 @@ protected:
                   counter_GLbox,
                   counter_CFbox,
                   k_basins;
+
   PetscScalar     counter_box_unidentified,
                   continental_shelf_depth; 
 
@@ -107,6 +133,20 @@ protected:
                   Soc_base_vec,
                   gamma_T_star_vec,
                   C_vec;
+
+  static const PetscScalar  earth_grav,
+                            rhoi,
+                            rhow,
+                            latentHeat,
+                            c_p_ocean,      // J/(K*kg), specific heat capacity of ocean mixed layer
+                            rho_star,       // kg/m^3
+                            a,              // °C/psu
+                            b,              // °C
+                            c,              // °C/dbar
+                            alpha,          // 1/°C, NOTE K vs °C
+                            beta,           // 1/psu
+                            nu,             // no unit
+                            lambda;          // °C, NOTE K vs °C
 
 };
 

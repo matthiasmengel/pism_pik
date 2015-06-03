@@ -134,19 +134,6 @@ protected:
                   gamma_T_star_vec,
                   C_vec;
 
-  static const PetscScalar  earth_grav,
-                            rhoi,
-                            rhow,
-                            latentHeat,
-                            c_p_ocean,      // J/(K*kg), specific heat capacity of ocean mixed layer
-                            rho_star,       // kg/m^3
-                            a,              // °C/psu
-                            b,              // °C
-                            c,              // °C/dbar
-                            alpha,          // 1/°C, NOTE K vs °C
-                            beta,           // 1/psu
-                            nu,             // no unit
-                            lambda;          // °C, NOTE K vs °C
 
 };
 

@@ -450,7 +450,7 @@ PetscErrorCode POoceanboxmodel::computeOCEANMEANS() {
   }
 
 
-  /* NOTE: olöd routine which calculates an range of 200km ....
+  /* NOTE: old routine which calculates an range of 200km ....
   PetscInt number_of_iterations = 0; // to get circa 200km before the ice shelf, FIXME do we want this to be chosable?
   number_of_iterations = round(200e3 / ((grid.dx +grid.dy)/2.0)); // meter 
   //ierr = verbPrintf(2, grid.com,"0a  : number of Iterations = %d , %f\n", number_of_iterations, 200e3 / ((grid.dx +grid.dy)/2.0)); CHKERRQ(ierr);
@@ -754,7 +754,7 @@ if (exicerises_set) { ierr = ICERISESmask.end_access();   CHKERRQ(ierr);}
     ierr = PISMGlobalSum(&lcounter_CFbox[i], &counter_CFbox[i], grid.com); CHKERRQ(ierr);
     ierr = PISMGlobalSum(&lcounter_GLbox[i], &counter_GLbox[i], grid.com); CHKERRQ(ierr);
   } 
-  for(int i=0;i<numberOfBasins;i++){ ierr = verbPrintf(5, grid.com,"AfterExtentOfIceShelves: basin= %d, counter[i] = %.0f, counter_CFbox= %.0f, counter_GLbox = %.0f\n", i, counter[i], counter_CFbox[i], counter_GLbox[i]); CHKERRQ(ierr);}
+  for(int i=0;i<numberOfBasins;i++){ ierr = verbPrintf(5, grid.com,"AfterExtentOfIceShelves: basin=%d, cnt[i]=%.0f, cnt_CFbox=%.0f, cnt_GLbox=%.0f\n", i, counter[i], counter_CFbox[i], counter_GLbox[i]); CHKERRQ(ierr);}
  
   return 0;
 }
@@ -926,7 +926,7 @@ PetscErrorCode POoceanboxmodel::identifyBOXMODELmask() {
   ierr = CHECKmask.end_access(); CHKERRQ(ierr);
   //FIXME end of delete!
 
-  for(int i=0;i<numberOfBasins;i++){ ierr = verbPrintf(5, grid.com,"A1b: basin= %d, counter[i] = %.0f, counter_CFbox= %.0f, counter_GLbox = %.0f, ratio_CF_box= %.3f, ratio_GL_box= %.3f\n", i, counter[i], counter_CFbox[i], counter_GLbox[i], counter_CFbox[i]/counter[i], counter_GLbox[i]/counter[i]); CHKERRQ(ierr);}
+  for(int i=0;i<numberOfBasins;i++){ ierr = verbPrintf(5, grid.com,"A1b: basin= %d, cnt[i] = %.0f, cnt_CFbox= %.0f, cnt_GLbox = %.0f, ratio_CF_box= %.3f, ratio_GL_box= %.3f\n", i, counter[i], counter_CFbox[i], counter_GLbox[i], counter_CFbox[i]/counter[i], counter_GLbox[i]/counter[i]); CHKERRQ(ierr);}
   return 0;
 }
 
@@ -1071,8 +1071,11 @@ PetscErrorCode POoceanboxmodel::basalMeltRateForGroundingLineBox() {
 	  	  PetscScalar helpterm2 = (g1*T_star(i,j)) / (beta*(Soc_base(i,j) / (nu*lambda)) - alpha); // in °C / (1/°C) = °C^2
 
 	  	  if ((0.25*PetscSqr(helpterm1) -helpterm2) < 0.0) {
-	    	  ierr = verbPrintf(2, grid.com,"PISM_ERROR: square-root is negative! %f at %d, %d\n...with 0.25*helpterm^2=%f,helpterm2=%f,g1=%f,(beta*(Soc_base(i,j) / (nu*lambda)) - alpha)=%f,Tstar=%f\n   Aborting... \n", 0.25*PetscSqr(helpterm1) -helpterm2, i, j, 0.25*PetscSqr(helpterm1),helpterm2,g1,(beta*(Soc_base(i,j) / (nu*lambda)) - alpha),T_star(i,j)); CHKERRQ(ierr);
-	    	  PISMEnd();
+          //ierr = verbPrintf(2, grid.com,"PISM_ERROR: Tb=%f, Ta=%f, Tst=%f, Sb=%f  at %d, %d\n\n",Toc_base(i,j),Toc_anomaly(i,j),T_star(i,j),Soc_base(i,j),i,j); CHKERRQ(ierr);
+          //ierr = verbPrintf(2, grid.com,"PISM_ERROR: h1=%f, h2=%f, h1sq=%f at %d, %d\n\n",helpterm1,helpterm2,0.25*PetscSqr(helpterm1),i,j); CHKERRQ(ierr);
+	    	  ierr = verbPrintf(2, grid.com,"PISM_ERROR: square-root is negative! %f at %d, %d\n...with 0.25*helpterm^2=%f,helpterm2=%f,g1=%f,(beta*(Soc_base(i,j)/(nu*lambda))-alpha)=%f,Tstar=%f\n Not aborting, but setting sum to 0... \n", 0.25*PetscSqr(helpterm1) -helpterm2, i, j, 0.25*PetscSqr(helpterm1),helpterm2,g1,(beta*(Soc_base(i,j) / (nu*lambda)) - alpha),T_star(i,j)); CHKERRQ(ierr);
+	    	  //PISMEnd();
+          helpterm2=0.25*PetscSqr(helpterm1);
 	  	  }
 
 	  	  // NOTE Careful, Toc_base(i,j) is in K, Toc_inCelsius(i,j) NEEDS to be in °C!
@@ -1099,6 +1102,8 @@ PetscErrorCode POoceanboxmodel::basalMeltRateForGroundingLineBox() {
           lmean_meltrate_GLbox_vector[shelf_id] += basalmeltrate_shelf(i,j);
           lmean_overturning_GLbox_vector[shelf_id] += overturning(i,j);
 
+          //ierr = verbPrintf(4, grid.com,"B1 : in basal melt rate gl rountine test1: %d,%d, %d: %.0f \n",i,j,shelf_id,lcounter_edge_of_GLbox_vector[shelf_id]); CHKERRQ(ierr);
+
 	  	  } // no else-case necessary since all variables are set to zero at the beginning of this routine
 
       }else { // i.e., not GL_box
@@ -1122,11 +1127,7 @@ PetscErrorCode POoceanboxmodel::basalMeltRateForGroundingLineBox() {
 
   for(int i=0;i<numberOfBasins;i++) {
     PetscScalar counter_edge_of_GLbox_vector=0.0;
-
-    ierr = verbPrintf(4, grid.com,"B1 : in basal melt rate gl rountine test3a: %f \n",lcounter_edge_of_GLbox_vector[i]); CHKERRQ(ierr);
     ierr = PISMGlobalSum(&lcounter_edge_of_GLbox_vector[i], &counter_edge_of_GLbox_vector, grid.com); CHKERRQ(ierr);
-    ierr = verbPrintf(4, grid.com,"B1 : in basal melt rate gl rountine test3b: %f \n",lcounter_edge_of_GLbox_vector[i]); CHKERRQ(ierr);
-
     ierr = PISMGlobalSum(&lmean_meltrate_GLbox_vector[i], &mean_meltrate_GLbox_vector[i], grid.com); CHKERRQ(ierr);
     ierr = PISMGlobalSum(&lmean_salinity_GLbox_vector[i], &mean_salinity_GLbox_vector[i], grid.com); CHKERRQ(ierr);
     ierr = PISMGlobalSum(&lmean_overturning_GLbox_vector[i], &mean_overturning_GLbox_vector[i], grid.com); CHKERRQ(ierr);
@@ -1139,7 +1140,7 @@ PetscErrorCode POoceanboxmodel::basalMeltRateForGroundingLineBox() {
     } else { // This means that there is no [cell from the GLbox neighboring a cell from the CFbox], NOT necessarily that there is no GLbox!
       mean_salinity_GLbox_vector[i]=0.0; mean_meltrate_GLbox_vector[i]=0.0; mean_overturning_GLbox_vector[i]=0.0;
     }
-    ierr = verbPrintf(5, grid.com,"   %d: cnt=%f, sal=%.3f, melt=%.3f, over=%.3f \n", i,counter_edge_of_GLbox_vector,mean_salinity_GLbox_vector[i],mean_meltrate_GLbox_vector[i],mean_overturning_GLbox_vector[i]) ; CHKERRQ(ierr); 
+    ierr = verbPrintf(5, grid.com,"   %d: cnt=%.0f, sal=%.3f, melt=%.3f, over=%.3f \n", i,counter_edge_of_GLbox_vector,mean_salinity_GLbox_vector[i],mean_meltrate_GLbox_vector[i],mean_overturning_GLbox_vector[i]) ; CHKERRQ(ierr); 
   }
 
   return 0;
@@ -1200,7 +1201,7 @@ PetscErrorCode POoceanboxmodel::basalMeltRateForIceFrontBox() {
 
 
         if(area_GLbox==0){ // if there is no grounding line box in the current basin, set BOXMODELmask to 3 and compute basal melt rate by Beckmann-Gose
-          //ierr = verbPrintf(2, grid.com,"!!!! GLBOX =0 , basin = %d at %d,%d, \n   ", shelf_id,i,j); CHKERRQ(ierr);
+          ierr = verbPrintf(2, grid.com,"!!!! GLBOX =0 , basin = %d at %d,%d, \n   ", shelf_id,i,j); CHKERRQ(ierr);
           BOXMODELmask(i,j) = box_other;
         }
         else{
@@ -1212,6 +1213,9 @@ PetscErrorCode POoceanboxmodel::basalMeltRateForIceFrontBox() {
         k4 = (-k1*k2*area_CFbox*gamma_T_star*a + k1*a);              // in m^3/(s*°C) * s/m^3 * m^2 * m/s * °C/psu = m^3/(s*psu)
         k5 = (mean_overturning_in_GLbox + Soc_base(i,j)*k1*k2*area_CFbox*gamma_T_star*a  - k1*Soc_base(i,j)*a - k1*T_star(i,j) + k1*k2*k3); // in m^3/s
         k6 = (k1*Soc_base(i,j)*T_star(i,j) - k1*k2*Soc_base(i,j)*k3  - area_GLbox*mean_meltrate_in_GLbox*mean_salinity_in_GLbox);  // in psu * m^3/s
+
+        //ierr = verbPrintf(2, grid.com,"!!!! ACF=%.3e, AGL=%.3e, MS=%.3f, MM=%.3f, MO=%.3f, basin = %d at %d,%d, \n   ",  area_CFbox,area_GLbox,mean_salinity_in_GLbox,mean_meltrate_in_GLbox,mean_overturning_in_GLbox,shelf_id,i,j); CHKERRQ(ierr);
+        //ierr = verbPrintf(2, grid.com,"!!!! k1=%.3f, k2=%.3f, k3=%.3f, k4=%.3f, k5=%.3f, k6=%.3f, basin = %d at %d,%d, \n   ",k1,k2,k3,k4,k5,k6,shelf_id,i,j); CHKERRQ(ierr);
 
         //! salinity for calving front box
 	  	  if (k4 == 0.0) {

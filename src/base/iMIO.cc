@@ -451,7 +451,7 @@ PetscErrorCode IceModel::initFromFile(string filename) {
   // set the field itself to 0 if it is not present
   if (config.get_flag("drainageBasins")) {
     bool exists;
-    ierr = nc.inq_var("drainage_basins", exists); CHKERRQ(ierr);
+    ierr = nc.inq_var("basins", exists); CHKERRQ(ierr);
     ierr = vBasinMask.read(filename, last_record); CHKERRQ(ierr);
     if (!exists) {
       ierr = verbPrintf(2, grid.com,

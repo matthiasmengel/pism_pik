@@ -130,8 +130,8 @@ PetscErrorCode POoceanboxmodel::init(PISMVars &vars) {
   ierr = OCEANMEANmask.set_attrs("model_state", "mask displaying ocean region for parameter input","", ""); CHKERRQ(ierr);
 
   // corected basins: FIXME delete CHECKmask 
-  ierr = CHECKmask.create(grid, "CHECKmask", true); CHKERRQ(ierr);
-  ierr = CHECKmask.set_attrs("model_state", "mask displaying rounded basins","", ""); CHKERRQ(ierr);
+  //ierr = CHECKmask.create(grid, "CHECKmask", true); CHKERRQ(ierr);
+  //ierr = CHECKmask.set_attrs("model_state", "mask displaying rounded basins","", ""); CHKERRQ(ierr);
 
 
 
@@ -179,7 +179,7 @@ PetscErrorCode POoceanboxmodel::init(PISMVars &vars) {
   mask = dynamic_cast<IceModelVec2Int*>(vars.get("mask"));
   if (!mask) { SETERRQ(grid.com, 1, "ERROR: mask is not available"); }
 
-  basins = dynamic_cast<IceModelVec2S*>(vars.get("drainage_basins"));
+  basins = dynamic_cast<IceModelVec2S*>(vars.get("drainage_basins")); //if option drainageBasins set
   if (!basins) { SETERRQ(grid.com, 1, "ERROR: drainage basins is not available"); }
 
 
@@ -890,13 +890,13 @@ PetscErrorCode POoceanboxmodel::identifyBOXMODELmask() {
   }
 
   //FIXME delete!
-  ierr = CHECKmask.begin_access(); CHKERRQ(ierr);
-  for (PetscInt i=grid.xs; i<grid.xs+grid.xm; ++i) {
-      for (PetscInt j=grid.ys; j<grid.ys+grid.ym; ++j) {
-        CHECKmask(i,j) = roundBasins(i,j);
-      }
-  }
-  ierr = CHECKmask.end_access(); CHKERRQ(ierr);
+  //ierr = CHECKmask.begin_access(); CHKERRQ(ierr);
+  //for (PetscInt i=grid.xs; i<grid.xs+grid.xm; ++i) {
+  //    for (PetscInt j=grid.ys; j<grid.ys+grid.ym; ++j) {
+  //     CHECKmask(i,j) = roundBasins(i,j);
+  //    }
+  //}
+  //ierr = CHECKmask.end_access(); CHKERRQ(ierr);
   //FIXME end of delete!
 
   for(int k=0;k<numberOfBasins;k++){ ierr = verbPrintf(5, grid.com,"   basin = %d, cnt[i] = %.0f, cnt_CFbox = %.0f, cnt_GLbox = %.0f, ratio_CF_box = %.3f, ratio_GL_box = %.3f\n", k, counter[k], counter_CFbox[k], counter_GLbox[k], counter_CFbox[k]/counter[k], counter_GLbox[k]/counter[k]); CHKERRQ(ierr);}
@@ -1350,7 +1350,7 @@ PetscErrorCode POoceanboxmodel::write_variables(set<string> vars, string filenam
   if (set_contains(vars, "overturning")) {  ierr = overturning.write(filename.c_str()); CHKERRQ(ierr); }
   if (set_contains(vars, "heatflux")) {  ierr = heatflux.write(filename.c_str()); CHKERRQ(ierr);  }
   if (set_contains(vars, "basalmeltrate_shelf")) { ierr = basalmeltrate_shelf.write(filename.c_str()); CHKERRQ(ierr); }
-  if (set_contains(vars, "CHECKmask")) { ierr = CHECKmask.write(filename.c_str()); CHKERRQ(ierr); } //FIXME delete
+  //if (set_contains(vars, "CHECKmask")) { ierr = CHECKmask.write(filename.c_str()); CHKERRQ(ierr); } //FIXME delete
   if (exicerises_set) {
     if (set_contains(vars, "ICERISESmask")) {  ierr = ICERISESmask.write(filename.c_str()); CHKERRQ(ierr);  }
   }

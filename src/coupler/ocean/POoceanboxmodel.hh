@@ -47,7 +47,6 @@ public:
 
   }
 
-
   virtual ~POoceanboxmodel() {}
 
   virtual PetscErrorCode init(PISMVars &vars);
@@ -58,46 +57,107 @@ public:
     result = sea_level;
     return 0;
   }
-  virtual PetscErrorCode roundBasins(PetscInt i, PetscInt j);
-  virtual PetscErrorCode computeOCEANMEANS();
-  virtual PetscErrorCode identifyICERISES();
-  virtual PetscErrorCode extentOfIceShelves();
-  virtual PetscErrorCode identifyBOXMODELmask();
-  virtual PetscErrorCode extendGLBox();
-  virtual PetscErrorCode extendIFBox();
-  virtual PetscErrorCode oceanTemperature();
-  virtual PetscErrorCode basalMeltRateForGroundingLineBox();
-  virtual PetscErrorCode basalMeltRateForIceFrontBox();
-  virtual PetscErrorCode basalMeltRateForOtherShelves();
 
   virtual PetscErrorCode shelf_base_temperature(IceModelVec2S &result);
   virtual PetscErrorCode shelf_base_mass_flux(IceModelVec2S &result);
 
   virtual PetscErrorCode write_variables(set<string> vars, string filename); // FIXME included by Ronja to write the variables to extra files. Is there a smarter way?
 
+
+  //////////////////////////////////////////////////////////////////////////////////////////
+
+
+  class POBMConstants {
+  public:
+    POBMConstants(const NCConfigVariable &conf);
+
+      PetscScalar   earth_grav,
+                    rhoi, rhow, rho_star, nu,
+                    latentHeat, c_p_ocean, lambda,
+                    a, b, c,
+                    alpha, beta;
+
+      PetscReal     gamma_T, value_C,
+                    T_dummy, S_dummy;
+
+      PetscScalar   gamma_T_o, meltFactor, meltSalinity, b2;
+      PetscScalar   continental_shelf_depth;
+
+      PetscInt      numberOfBasins;
+
+  };
+
+private:
+
+  virtual PetscErrorCode initBasinsOptions(const POBMConstants &constants);
+  virtual PetscErrorCode roundBasins(PetscInt i, PetscInt j);
+  virtual PetscErrorCode identifyMASK(IceModelVec2S &inputmask, string masktype);
+  virtual PetscErrorCode computeOCEANMEANS();
+  virtual PetscErrorCode extentOfIceShelves();
+  virtual PetscErrorCode identifyBOXMODELmask();
+  virtual PetscErrorCode extendGLBox();
+  virtual PetscErrorCode extendIFBox();
+  virtual PetscErrorCode oceanTemperature();
+  virtual PetscErrorCode basalMeltRateForGroundingLineBox(const POBMConstants &constants);
+  virtual PetscErrorCode basalMeltRateForIceFrontBox(const POBMConstants &constants);
+  virtual PetscErrorCode basalMeltRateForOtherShelves(const POBMConstants &constants);
+
+
 protected:
-  IceModelVec2S *ice_thickness, *topg, *lat, *lon, *basins;	// not owned by this class
+
+  PetscReal     gamma_T, value_C;
+  PetscReal     T_dummy, S_dummy;
+  PetscInt      numberOfBasins;
+  PetscScalar   continental_shelf_depth;
+
+
+  IceModelVec2S *ice_thickness, 
+                *topg, 
+                *basins;	// not owned by this class 
 
   IceModelVec2Int *mask;  // not owned by this class
 
-  IceModelVec2S ICERISESmask, BOXMODELmask, DRAINAGEmask, OCEANMEANmask, CHECKmask, //FIXME delete CHECKmask
-                Soc, Soc_base, Toc, Toc_base, Toc_inCelsius, T_star, 
-                Toc_anomaly, overturning, heatflux, basalmeltrate_shelf;
+  IceModelVec2S ICERISESmask, 
+                BOXMODELmask, 
+                OCEANMEANmask, //FIXME delete OCEANMEANmask
+                CHECKmask, //FIXME delete CHECKmask
+                Soc, 
+                Soc_base, 
+                Toc, 
+                Toc_base, 
+                Toc_inCelsius, 
+                T_star, 
+                Toc_anomaly, 
+                overturning, 
+                heatflux, 
+                basalmeltrate_shelf;
 
-  bool ocean_oceanboxmodel_deltaT_set, drainageBasins_set, drainageBasins_OH10_set, exicerises_set;
+  bool ocean_oceanboxmodel_deltaT_set, exicerises_set, continental_shelf_depth_set;
 
   Timeseries *delta_T;
 
-  static const int shelf_unidentified, noshelf;
-  static const int box_unidentified, box_noshelf, box_GL, box_neighboring, box_IF, maskfloating, maskocean, maskgrounded;
+  static const int  box_unidentified, 
+                    box_noshelf, 
+                    box_GL, 
+                    box_neighboring, 
+                    box_IF, 
+                    box_other, 
 
-  PetscInt numberOfBasins;
+                    maskfloating, 
+                    maskocean, 
+                    maskgrounded,
+
+                    imask_inner,
+                    imask_outer,
+                    imask_exclude,
+                    imask_unidentified;
 
   vector<double>  counter,
                   counter_GLbox,
                   counter_CFbox,
                   k_basins;
-  PetscScalar     counter_box_unidentified; 
+
+  PetscScalar     counter_box_unidentified;
 
   vector<double>  mean_salinity_GLbox_vector,
                   mean_meltrate_GLbox_vector,
@@ -107,6 +167,7 @@ protected:
                   Soc_base_vec,
                   gamma_T_star_vec,
                   C_vec;
+
 
 };
 

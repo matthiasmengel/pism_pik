@@ -32,11 +32,36 @@
 
 PetscErrorCode PATemperaturePIK::init(PISMVars &vars) {
   PetscErrorCode ierr;
+  bool do_regrid = true;
+  int start = -1;
+  bool bc_file_set = false;
 
   ierr = verbPrintf(2, grid.com,
      "* Initializing the atmosphere model PATemperaturePIK.\n"); CHKERRQ(ierr);
 
-  ierr = PAYearlyCycle::init(vars); CHKERRQ(ierr);
+
+  // try to read precipitation from boundary forcing file, not from initfile or backupfile, to avoid jumps after restart 
+  string option_prefix   = "-atmosphere_pik_temp";
+  string precip_file;
+  ierr = PISMOptionsString(option_prefix + "_file",
+                               "Specifies a file with boundary conditions",
+                               precip_file, bc_file_set); CHKERRQ(ierr);
+
+  if (bc_file_set == false) {
+    ierr = PAYearlyCycle::init(vars); CHKERRQ(ierr); }
+  
+  else {
+    ierr = verbPrintf(2, grid.com,
+                    "    reading mean annual ice-equivalent precipitation rate 'precipitation'\n"
+                    "    from forcing file %s ... \n",
+                    precip_file.c_str()); CHKERRQ(ierr); 
+    if (do_regrid) {
+      ierr = precipitation.regrid(precip_file.c_str(), true); CHKERRQ(ierr); // fails if not found!
+    } else {
+      ierr = precipitation.read(precip_file.c_str(), start); CHKERRQ(ierr); // fails if not found!
+    }
+  }
+
 
   // initialize pointers to fields the parameterization depends on:
   usurf = dynamic_cast<IceModelVec2S*>(vars.get("surface_altitude"));
@@ -214,6 +239,13 @@ PetscErrorCode PATemperaturePIK::update(PetscReal my_t, PetscReal my_dt) {
   ierr = lat->end_access(); CHKERRQ(ierr);
   ierr = air_temp_mean_annual.end_access();  CHKERRQ(ierr);
   ierr = air_temp_mean_july.end_access();  CHKERRQ(ierr);
+
+
+  // make sure that precipitation is scaled according to delta_T, even if surface temperatures are not (without modifier delta_T) 
+  if ((delta_T != NULL) && precipitation_correction) {
+    ierr = PATemperaturePIK::mean_precipitation(precipitation); CHKERRQ(ierr);
+  }
+
 
   return 0;
 }

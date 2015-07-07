@@ -142,9 +142,44 @@ PetscErrorCode PATemperaturePIK::init(PISMVars &vars) {
 PetscErrorCode PATemperaturePIK::mean_precipitation(IceModelVec2S &result) {
   PetscErrorCode ierr;
 
-  ierr = PAYearlyCycle::mean_precipitation(result); CHKERRQ(ierr);
-
   if ((delta_T != NULL) && precipitation_correction) {
+
+    bool do_regrid = true;
+    int start = -1;
+    bool bc_file_set = false;
+
+
+    // try to read precipitation from boundary forcing file, not from initfile or backupfile, to avoid jumps after restart 
+    string option_prefix   = "-atmosphere_pik_temp";
+    string precip_file;
+    ierr = PISMOptionsString(option_prefix + "_file",
+                               "Specifies a file with boundary conditions",
+                               precip_file, bc_file_set); CHKERRQ(ierr);
+
+    if (bc_file_set == false) {
+
+      ierr = find_pism_input(precip_file, do_regrid, start); CHKERRQ(ierr);
+
+      ierr = verbPrintf(2, grid.com,
+                    "    reading mean annual ice-equivalent precipitation rate 'precipitation'\n"
+                    "    from input file %s ... \n",
+                    precip_file.c_str()); CHKERRQ(ierr); 
+    }
+    else {
+      ierr = verbPrintf(2, grid.com,
+                    "    reading mean annual ice-equivalent precipitation rate 'precipitation'\n"
+                    "    from forcing file %s ... \n",
+                    precip_file.c_str()); CHKERRQ(ierr); 
+    }
+
+
+    if (do_regrid) {
+      ierr = precipitation.regrid(precip_file.c_str(), true); CHKERRQ(ierr); // fails if not found!
+    } else {
+      ierr = precipitation.read(precip_file.c_str(), start); CHKERRQ(ierr); // fails if not found!
+    }
+
+
 //    // ... as in Pollard & De Conto (2012), Eqn (34b): 
 //    ierr = result.scale(pow (2.0, (0.1* (*delta_T)(t + 0.5 * dt)))); CHKERRQ(ierr); // scale by 2^(0.1*DeltaT)
 
@@ -155,6 +190,8 @@ PetscErrorCode PATemperaturePIK::mean_precipitation(IceModelVec2S &result) {
       ierr = result.scale(pow (1.05, ((*delta_T)(t + 0.5 * dt)))); CHKERRQ(ierr); // scale by 1.05^(DeltaT), i.e., 5% precip increase per degree, DEFAULT CASE
     }
   }
+
+  ierr = PAYearlyCycle::mean_precipitation(result); CHKERRQ(ierr);
 
   return 0;
 }
